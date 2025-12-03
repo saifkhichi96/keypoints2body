@@ -74,19 +74,10 @@ def body_fitting_loss_3d(
     angle_prior_weight=15.2,
     joint_loss_weight=500.0,
     pose_preserve_weight=0.0,
-    use_collision=False,
-    model_vertices=None,
-    model_faces=None,
-    search_tree=None,
-    pen_distance=None,
-    filter_faces=None,
-    collision_loss_weight=1000,
 ):
     """
     Loss function for body fitting
     """
-    batch_size = body_pose.shape[0]
-
     # joint3d_loss = (joint_loss_weight ** 2) * gmof((model_joints + camera_translation) - j3d, sigma).sum(dim=-1)
 
     joint3d_error = gmof((model_joints + camera_translation) - j3d, sigma)
@@ -101,25 +92,6 @@ def body_fitting_loss_3d(
     # Regularizer to prevent betas from taking large values
     shape_prior_loss = (shape_prior_weight**2) * (betas**2).sum(dim=-1)
 
-    collision_loss = 0.0
-    # Calculate the loss due to interpenetration
-    if use_collision:
-        triangles = torch.index_select(model_vertices, 1, model_faces).view(
-            batch_size, -1, 3, 3
-        )
-
-        with torch.no_grad():
-            collision_idxs = search_tree(triangles)
-
-        # Remove unwanted collisions
-        if filter_faces is not None:
-            collision_idxs = filter_faces(collision_idxs)
-
-        if collision_idxs.ge(0).sum().item() > 0:
-            collision_loss = torch.sum(
-                collision_loss_weight * pen_distance(triangles, collision_idxs)
-            )
-
     pose_preserve_loss = (pose_preserve_weight**2) * (
         (body_pose - preserve_pose) ** 2
     ).sum(dim=-1)
@@ -129,7 +101,6 @@ def body_fitting_loss_3d(
         + pose_prior_loss
         + angle_prior_loss
         + shape_prior_loss
-        + collision_loss
         + pose_preserve_loss
     )
 

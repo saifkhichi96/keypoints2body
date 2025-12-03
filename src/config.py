@@ -68,5 +68,3 @@ amass_smpl_idx = range(22)
 smpl_dir = "./data/models/body_models/"
 GMM_MODEL_DIR = "./data/models/body_models/"
 SMPL_MEAN_FILE = "./data/models/body_models/neutral_smpl_mean_params.h5"
-# for collsion
-Part_Seg_DIR = "./data/models/body_models/smplx_parts_segm.pkl"

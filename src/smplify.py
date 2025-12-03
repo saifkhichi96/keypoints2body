@@ -1,6 +1,5 @@
 import logging
 import os
-import pickle
 import sys
 
 import torch
@@ -51,7 +50,6 @@ class SMPLify3D:
         step_size=1e-2,
         batch_size=1,
         num_iters=100,
-        use_collision=False,
         use_lbfgs=True,
         joints_category="orig",
         device=torch.device("cuda:0"),
@@ -68,15 +66,9 @@ class SMPLify3D:
         self.pose_prior = MaxMixturePrior(
             prior_folder=config.GMM_MODEL_DIR, num_gaussians=8, dtype=torch.float32
         ).to(device)
-        # collision part
-        self.use_collision = use_collision
-        if self.use_collision:
-            self.part_segm_fn = config.Part_Seg_DIR
 
         # reLoad SMPL-X model
         self.smpl = smplxmodel
-
-        self.model_faces = smplxmodel.faces_tensor.view(-1)
 
         # select joint joint_category
         self.joints_category = joints_category
@@ -109,36 +101,6 @@ class SMPLify3D:
             betas: SMPL beta parameters of optimized shape
             camera_translation: Camera translation
         """
-
-        # # # add the mesh inter-section to avoid
-        search_tree = None
-        pen_distance = None
-        filter_faces = None
-
-        if self.use_collision:
-            import mesh_intersection.loss as collisions_loss
-            from mesh_intersection.bvh_search_tree import BVH
-            from mesh_intersection.filter_faces import FilterFaces
-
-            search_tree = BVH(max_collisions=8)
-
-            pen_distance = collisions_loss.DistanceFieldPenetrationLoss(
-                sigma=0.5, point2plane=False, vectorized=True, penalize_outside=True
-            )
-
-            if self.part_segm_fn:
-                # Read the part segmentation
-                part_segm_fn = os.path.expandvars(self.part_segm_fn)
-                with open(part_segm_fn, "rb") as faces_parents_file:
-                    face_segm_data = pickle.load(faces_parents_file, encoding="latin1")
-                faces_segm = face_segm_data["segm"]
-                faces_parents = face_segm_data["parents"]
-                # Create the module used to filter invalid collision pairs
-                filter_faces = FilterFaces(
-                    faces_segm=faces_segm,
-                    faces_parents=faces_parents,
-                    ign_part_pairs=None,
-                ).to(device=self.device)
 
         # Split SMPL pose to body pose and global orientation
         body_pose = init_pose[:, 3:].detach().clone()
@@ -243,7 +205,6 @@ class SMPLify3D:
                         global_orient=global_orient, body_pose=body_pose, betas=betas
                     )
                     model_joints = smpl_output.joints
-                    model_vertices = smpl_output.vertices
 
                     loss = body_fitting_loss_3d(
                         body_pose,
@@ -256,12 +217,6 @@ class SMPLify3D:
                         joints3d_conf=conf_3d,
                         joint_loss_weight=600.0,
                         pose_preserve_weight=5.0,
-                        use_collision=self.use_collision,
-                        model_vertices=model_vertices,
-                        model_faces=self.model_faces,
-                        search_tree=search_tree,
-                        pen_distance=pen_distance,
-                        filter_faces=filter_faces,
                     )
                     loss.backward()
                     return loss
@@ -277,7 +232,6 @@ class SMPLify3D:
                     global_orient=global_orient, body_pose=body_pose, betas=betas
                 )
                 model_joints = smpl_output.joints
-                model_vertices = smpl_output.vertices
 
                 loss = body_fitting_loss_3d(
                     body_pose,
@@ -289,12 +243,6 @@ class SMPLify3D:
                     self.pose_prior,
                     joints3d_conf=conf_3d,
                     joint_loss_weight=600.0,
-                    use_collision=self.use_collision,
-                    model_vertices=model_vertices,
-                    model_faces=self.model_faces,
-                    search_tree=search_tree,
-                    pen_distance=pen_distance,
-                    filter_faces=filter_faces,
                 )
                 body_optimizer.zero_grad()
                 loss.backward()
@@ -309,7 +257,6 @@ class SMPLify3D:
                 return_full_pose=True,
             )
             model_joints = smpl_output.joints
-            model_vertices = smpl_output.vertices
 
             final_loss = body_fitting_loss_3d(
                 body_pose,
@@ -321,12 +268,6 @@ class SMPLify3D:
                 self.pose_prior,
                 joints3d_conf=conf_3d,
                 joint_loss_weight=600.0,
-                use_collision=self.use_collision,
-                model_vertices=model_vertices,
-                model_faces=self.model_faces,
-                search_tree=search_tree,
-                pen_distance=pen_distance,
-                filter_faces=filter_faces,
             )
 
         vertices = smpl_output.vertices.detach()

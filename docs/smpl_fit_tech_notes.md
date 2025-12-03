@@ -38,7 +38,6 @@ E = w_j^2 \sum_i c_i^2 \, \rho\!\left((j_i + t) - \hat{j}_i\right)
 $$
 - $\Pi(\theta)$: pose prior (MoG) from `MaxMixturePrior`.
 - $A(\theta)$: angle prior to discourage elbow/knee hyperextension.
-- $E_{\text{coll}}$: optional interpenetration term (if collision enabled).
 - `c_i`: joint confidences (feet can be upweighted).
 - $\theta_{\text{prev}}$: pose from previous frame (stabilizer).
 

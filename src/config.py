@@ -31,11 +31,6 @@ JOINT_MAP = {
     "LEar": 28,
     "LHeel": 31,
     "RHeel": 34,
-    "OP RShoulder": 17,
-    "OP LShoulder": 16,
-    "OP RHip": 2,
-    "OP LHip": 1,
-    "OP Neck": 12,
 }
 
 full_smpl_idx = range(24)

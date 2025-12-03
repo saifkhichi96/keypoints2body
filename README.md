@@ -1,15 +1,13 @@
 # joints2smpl
-fit SMPL model using 3D joints
+Fit SMPL models to 3D joints and render the resulting meshes.
 
 ## Prerequisites
-We have tested the code on Ubuntu 18.04/20.04 with CUDA 10.2/11.3
+- Tested on Ubuntu 24.04 with CUDA 12.6 and Python 3.10.
+- SMPL model files (neutral/female/male) are required.
 
 ## Installation
-First you have to make sure that you have all dependencies in place.
-The simplest way to do is to use the [anaconda](https://www.anaconda.com/).
-
-You can create an anaconda environment called `fit3d` using
-```
+Create and activate the conda environment:
+```bash
 conda env create -f environment.yaml
 conda activate fit3d
 ```

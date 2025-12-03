@@ -13,20 +13,39 @@ conda activate fit3d
 ```
 
 ## Download SMPL models
-Download [SMPL Female and Male](https://smpl.is.tue.mpg.de/) and [SMPL Netural](https://smplify.is.tue.mpg.de/), and rename the files and extract them to `<current directory>/smpl_models/smpl/`, eventually, the `<current directory>/smpl_models` folder should have the following structure:
-   ```
-   smpl_models
-    └-- smpl
-    	└-- SMPL_FEMALE.pkl
-		└-- SMPL_MALE.pkl
-		└-- SMPL_NEUTRAL.pkl
-   ```   
+Download SMPL [Male, Female](https://smpl.is.tue.mpg.de/) and [Neutral](https://smplify.is.tue.mpg.de/) body models and place them under `<repo>/data/models/body_models/smpl/` so the layout is:
+```
+<repo>
+└── data/models/body_models/smpl/
+    ├── SMPL_FEMALE.pkl
+    ├── SMPL_MALE.pkl
+    └── SMPL_NEUTRAL.pkl
+```
 
-## Demo
-### Demo for sequences
-python fit_seq.py --files test_motion2.npy
+## Usage
+Two scripts cover the main workflow: fitting SMPL to 3D joints and rendering the fitted meshes.
 
-The results will locate in ./demo/demo_results/
+### 1) Fit SMPL to a joints sequence
+`smpl_fit.py` optimizes SMPL parameters for each frame of a `.npy` joints sequence.
+```bash
+python smpl_fit.py \
+  --file ./data/demo/test_motion1.npy \
+  --work-dir ./work_dirs \
+  --joint-category AMASS \
+  --num-smplify-iters 100
+```
+Key arguments:
+- `--file`: Full path of the input `.npy` file containing a sequence of 3D joints (N x J x 3).
+- `--work-dir`: Where per-frame `.pkl` results are written.
+- `--cuda/--cpu`, `--gpu-id`: Control device selection.
+- `--num-smplify-iters`, `--fix-foot`: Tuning knobs for optimization.
+
+Output layout under `<work-dir>/<sequence-name>/<timestamp>/`:
+- One `.pkl` per frame containing:
+  - `pose`: (1, 72) SMPL pose (global orient + body pose) in axis-angle.
+  - `beta`: (1, 10) SMPL shape coefficients.
+  - `cam`: (1, 3) translation vector.
+  - `root`: (3,) root joint position from input joints (for reference).
 
 ## Citation
 If you find this project useful for your research, please consider citing:
@@ -42,9 +61,7 @@ If you find this project useful for your research, please consider citing:
 ```
 
 ## References
-We indicate if a function or script is borrowed externally inside each file. Here are some great resources we 
-benefit:
-
+We indicate if a function or script is borrowed externally inside each file. Here are some great resources we benefit from:
 - Shape/Pose prior and some functions are borrowed from [VIBE](https://github.com/mkocabas/VIBE).
 - SMPL models and layer is from [SMPL-X model](https://github.com/vchoutas/smplx).
 - Some functions are borrowed from [HMR-pytorch](https://github.com/MandyMo/pytorch_HMR).

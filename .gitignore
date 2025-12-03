@@ -219,5 +219,5 @@ __marimo__/
 data/models/body_models/smpl/*.pkl
 data/models/body_models/smplx/*.pkl
 work_dirs/
-expors/
+exports/
 logs/

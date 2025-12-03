@@ -1,6 +1,8 @@
 # joints2smpl
 Fit SMPL models to 3D joints and render the resulting meshes.
 
+![SMPL Fitting Pipeline](docs/overview.png)
+
 ## Prerequisites
 - Tested on Ubuntu 24.04 with CUDA 12.6 and Python 3.10.
 - SMPL model files (neutral/female/male) are required.
@@ -23,7 +25,8 @@ Download SMPL [Male, Female](https://smpl.is.tue.mpg.de/) and [Neutral](https://
 ```
 
 ## Usage
-Two scripts cover the main workflow: fitting SMPL to 3D joints and rendering the fitted meshes.
+
+The main workflow, described in detail in the [technical report](docs/smpl_fit_tech_notes.md), consists of two scripts: fitting SMPL to 3D joints and rendering the fitted meshes.
 
 ### 1) Fit SMPL to a joints sequence
 `smpl_fit.py` optimizes SMPL parameters for each frame of a `.npy` joints sequence.

@@ -50,26 +50,10 @@ Output layout under `<work-dir>/<sequence-name>/<timestamp>/`:
   - `cam`: (1, 3) translation vector.
   - `root`: (3,) root joint position from input joints (for reference).
 
-### 2) Render fitted meshes
-Use `smpl_render.py` to visualize `.pkl` outputs as meshes, save PNG frames, or write a video:
-```bash
-python smpl_render.py \
-  ./work_dirs/test_motion1/<timestamp> \
-  --write-video ./work_dirs/test_motion1/video.mp4
-```
-Useful flags:
-- `--results-dir`: Folder containing the per-frame `.pkl` files.
-- `--write-video`: Write a video of the whole sequence (requires `imageio` and `imageio-ffmpeg`).
-- `--write-frames`: Directory to save rendered PNGs (omit to disable offscreen rendering).
-- `--display-frame N`: Open a single frame interactively (no PNGs written).
-- `--width/--height`: Render resolution.
-- `--smpl-dir`, `--gender`: SMPL model selection.
-
 ## Demo
 Run the end-to-end demo with the provided sample:
 ```bash
 python smpl_fit.py --data-folder ./data/demo --file test_motion1.npy --work-dir ./work_dirs
-python smpl_render.py ./work_dirs/test_motion1/<timestamp> --write-video ./work_dirs/test_motion1/video.mp4
 ```
 
 ## Citation

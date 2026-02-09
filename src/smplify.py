@@ -211,10 +211,10 @@ class SMPLify3D:
                         preserve_pose,
                         betas,
                         model_joints[:, self.smpl_index],
-                        camera_translation,
                         j3d[:, self.corr_index],
                         self.pose_prior,
                         joints3d_conf=conf_3d,
+                        camera_translation=camera_translation,
                         joint_loss_weight=600.0,
                         pose_preserve_weight=5.0,
                     )
@@ -238,10 +238,10 @@ class SMPLify3D:
                     preserve_pose,
                     betas,
                     model_joints[:, self.smpl_index],
-                    camera_translation,
                     j3d[:, self.corr_index],
                     self.pose_prior,
                     joints3d_conf=conf_3d,
+                    camera_translation=camera_translation,
                     joint_loss_weight=600.0,
                 )
                 body_optimizer.zero_grad()
@@ -263,10 +263,10 @@ class SMPLify3D:
                 preserve_pose,
                 betas,
                 model_joints[:, self.smpl_index],
-                camera_translation,
                 j3d[:, self.corr_index],
                 self.pose_prior,
                 joints3d_conf=conf_3d,
+                camera_translation=camera_translation,
                 joint_loss_weight=600.0,
             )
 

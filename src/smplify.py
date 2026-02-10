@@ -131,32 +131,31 @@ class SMPLify3D:
                 lr=self.step_size,
                 line_search_fn="strong_wolfe",
             )
-            for i in range(10):
 
-                def closure():
-                    camera_optimizer.zero_grad()
-                    smpl_output = self.smpl(
-                        global_orient=global_orient, body_pose=body_pose, betas=betas
-                    )
-                    model_joints = smpl_output.joints
+            def closure():
+                camera_optimizer.zero_grad()
+                smpl_output = self.smpl(
+                    global_orient=global_orient, body_pose=body_pose, betas=betas
+                )
+                model_joints = smpl_output.joints
 
-                    loss = camera_fitting_loss_3d(
-                        model_joints,
-                        camera_translation,
-                        init_cam_t,
-                        j3d,
-                        self.joints_category,
-                    )
-                    loss.backward()
-                    return loss
+                loss = camera_fitting_loss_3d(
+                    model_joints,
+                    camera_translation,
+                    init_cam_t,
+                    j3d,
+                    self.joints_category,
+                )
+                loss.backward()
+                return loss
 
-                camera_optimizer.step(closure)
+            camera_optimizer.step(closure)
         else:
             camera_optimizer = torch.optim.Adam(
                 camera_opt_params, lr=self.step_size, betas=(0.9, 0.999)
             )
 
-            for i in range(20):
+            for i in range(self.num_iters):
                 smpl_output = self.smpl(
                     global_orient=global_orient, body_pose=body_pose, betas=betas
                 )
@@ -195,31 +194,30 @@ class SMPLify3D:
                 lr=self.step_size,
                 line_search_fn="strong_wolfe",
             )
-            for i in range(self.num_iters):
 
-                def closure():
-                    body_optimizer.zero_grad()
-                    smpl_output = self.smpl(
-                        global_orient=global_orient, body_pose=body_pose, betas=betas
-                    )
-                    model_joints = smpl_output.joints
+            def closure():
+                body_optimizer.zero_grad()
+                smpl_output = self.smpl(
+                    global_orient=global_orient, body_pose=body_pose, betas=betas
+                )
+                model_joints = smpl_output.joints
 
-                    loss = body_fitting_loss_3d(
-                        body_pose,
-                        preserve_pose,
-                        betas,
-                        model_joints[:, self.smpl_index],
-                        j3d[:, self.corr_index],
-                        self.pose_prior,
-                        joints3d_conf=conf_3d,
-                        camera_translation=camera_translation,
-                        joint_loss_weight=600.0,
-                        pose_preserve_weight=5.0,
-                    )
-                    loss.backward()
-                    return loss
+                loss = body_fitting_loss_3d(
+                    body_pose,
+                    preserve_pose,
+                    betas,
+                    model_joints[:, self.smpl_index],
+                    j3d[:, self.corr_index],
+                    self.pose_prior,
+                    joints3d_conf=conf_3d,
+                    camera_translation=camera_translation,
+                    joint_loss_weight=600.0,
+                    pose_preserve_weight=5.0,
+                )
+                loss.backward()
+                return loss
 
-                body_optimizer.step(closure)
+            body_optimizer.step(closure)
         else:
             body_optimizer = torch.optim.Adam(
                 body_opt_params, lr=self.step_size, betas=(0.9, 0.999)
@@ -252,7 +250,7 @@ class SMPLify3D:
                 global_orient=global_orient,
                 body_pose=body_pose,
                 betas=betas,
-                return_full_pose=True,
+                return_full_pose=False,
             )
             model_joints = smpl_output.joints
 

@@ -167,11 +167,6 @@ def main():
         init_mean_pose = torch.as_tensor(f["pose"][:]).unsqueeze(0).float().to(device)
         init_mean_shape = torch.as_tensor(f["shape"][:]).unsqueeze(0).float().to(device)
 
-    pred_pose = torch.zeros(opt.batch_size, 72, device=device)
-    pred_betas = torch.zeros(opt.batch_size, 10, device=device)
-    pred_cam_t = torch.zeros(opt.batch_size, 3, device=device)
-    keypoints_3d = torch.zeros(opt.batch_size, opt.num_joints, 3, device=device)
-
     # Initialize SMPLify3D
     logger.info("Initializing SMPLify3D...")
     smplify = SMPLify3D(

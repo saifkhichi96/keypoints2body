@@ -72,6 +72,12 @@ def parse_args():
         help="GPU id to use when CUDA is enabled.",
     )
     parser.add_argument(
+        "--use-adam",
+        dest="use_adam",
+        action="store_true",
+        help="Use Adam optimizer in SMPLify.",
+    )
+    parser.add_argument(
         "--fix-foot",
         dest="fix_foot",
         action="store_true",
@@ -172,6 +178,7 @@ def main():
         smplxmodel=smpl_model,
         batch_size=opt.batch_size,
         joints_category=skeleton,
+        use_lbfgs=not opt.use_adam,
         num_iters=opt.num_iters,
         device=device,
     )

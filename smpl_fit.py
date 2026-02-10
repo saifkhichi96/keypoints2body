@@ -19,6 +19,13 @@ from smplify import SMPLify3D
 logger = logging.getLogger(__name__)
 
 
+def configure_logging(level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper()),
+        format="%(asctime)s | %(levelname)s | %(message)s",
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Fit SMPL parameters to a sequence of 3D joints."
@@ -117,42 +124,38 @@ def parse_args():
     return parser.parse_args()
 
 
-def configure_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        format="%(asctime)s | %(levelname)s | %(message)s",
-    )
-
-
 def main():
     opt = parse_args()
     configure_logging(opt.log_level)
     logger.debug("Parsed options: %s", opt)
 
-    device = torch.device(
-        f"cuda:{opt.gpu_id}" if opt.cuda and torch.cuda.is_available() else "cpu"
+    if opt.cuda and torch.cuda.is_available():
+        device = torch.device(f"cuda:{opt.gpu_id}")
+    else:
+        device = torch.device("cpu")
+    logger.info(
+        "Using device: %s (cuda available: %s)", device, torch.cuda.is_available()
     )
-    if opt.cuda and not torch.cuda.is_available():
-        logger.warning("CUDA requested but not available; falling back to CPU.")
+    if torch.cuda.is_available():
+        logger.info("CUDA device name: %s", torch.cuda.get_device_name(opt.gpu_id))
 
-    smpl_dir = opt.smpl_dir.expanduser()
-    smpl_mean_file = opt.smpl_mean_file.expanduser()
-
+    # Load SMPL model
+    smpl_dir = Path(config.smpl_dir).expanduser()
     logger.info("Loading SMPL model from %s", smpl_dir)
-    smplmodel = smplx.create(
-        smpl_dir,
+    smpl_model = smplx.create(
+        str(smpl_dir),
         model_type="smpl",
         gender="neutral",
         ext="pkl",
         batch_size=opt.batch_size,
     ).to(device)
 
-    logger.info("Loading mean pose from %s", smpl_mean_file)
-    with h5py.File(smpl_mean_file, "r") as file:
-        init_mean_pose = torch.from_numpy(file["pose"][:]).unsqueeze(0).float()
-        init_mean_shape = torch.from_numpy(file["shape"][:]).unsqueeze(0).float()
-
-    cam_trans_zero = torch.tensor([0.0, 0.0, 0.0], device=device)
+    # Load mean pose/shape
+    smpl_mean_file = Path(config.SMPL_MEAN_FILE).expanduser()
+    logger.info("Loading mean pose/shape from %s", smpl_mean_file)
+    with h5py.File(smpl_mean_file, "r") as f:
+        init_mean_pose = torch.as_tensor(f["pose"][:]).unsqueeze(0).float().to(device)
+        init_mean_shape = torch.as_tensor(f["shape"][:]).unsqueeze(0).float().to(device)
 
     pred_pose = torch.zeros(opt.batch_size, 72, device=device)
     pred_betas = torch.zeros(opt.batch_size, 10, device=device)
@@ -204,7 +207,7 @@ def main():
 
     prev_pose = init_mean_pose.to(device)
     prev_betas = init_mean_shape.to(device)
-    prev_cam = cam_trans_zero
+    prev_cam = torch.tensor([0.0, 0.0, 0.0], device=device)
 
     for idx in pbar:
         keypoints_3d[0, :, :].copy_(data_tensor[idx])

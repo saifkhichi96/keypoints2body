@@ -151,15 +151,17 @@ class SMPLify3D:
             def closure():
                 camera_optimizer.zero_grad()
                 smpl_output = self.smpl(
-                    global_orient=global_orient, body_pose=body_pose, betas=betas
+                    global_orient=global_orient,
+                    body_pose=body_pose,
+                    betas=betas,
                 )
                 model_joints = smpl_output.joints
 
                 loss = camera_fitting_loss_3d(
-                    model_joints,
+                    model_joints[:, self.smpl_index],
                     camera_translation,
                     init_cam_t,
-                    j3d,
+                    j3d[:, self.corr_index],
                     self.joints_category,
                 )
                 loss.backward()

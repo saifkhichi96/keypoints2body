@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from typing import List, Optional
 
 import torch
 
@@ -13,6 +14,117 @@ from customloss import (
 from prior import MaxMixturePrior
 
 logger = logging.getLogger(__name__)
+
+
+@torch.no_grad()
+def optimize_shape_multi_frame(
+    smpl_model,
+    init_betas,
+    pose_init,
+    j3d_world,
+    joints_category="orig",
+    num_iters=20,
+    step_size=1e-1,
+    use_lbfgs=True,
+    device=torch.device("cpu"),
+    frame_indices: Optional[List[int]] = None,
+    joints3d_conf: Optional[torch.Tensor] = None,
+    shape_prior_weight=5.0,
+):
+    """
+    Multi-frame shape optimization.
+
+    Args:
+        smpl_model: SMPL model (on device)
+        init_betas: (1,10) initial shape
+        pose_init: (T,72) initial poses (global+body)
+        j3d_world: (T,J,3) world 3D joints (dataset layout)
+        joints_category: 'orig' or 'AMASS'
+        frame_indices: optional subset of frames to use
+    """
+    T, J, _ = j3d_world.shape
+
+    if frame_indices is None:
+        frame_indices = list(range(T))
+
+    betas = init_betas.clone().detach().to(device)
+    betas.requires_grad = True
+
+    if joints_category == "orig":
+        smpl_index = torch.tensor(list(config.smpl_idx), device=device)
+        corr_index = torch.tensor(list(config.smpl_idx), device=device)
+    elif joints_category == "AMASS":
+        smpl_index = torch.tensor(list(config.amass_smpl_idx), device=device)
+        corr_index = torch.tensor(list(config.amass_idx), device=device)
+    else:
+        raise ValueError(f"No such joints category: {joints_category}")
+
+    if joints3d_conf is None:
+        joints3d_conf = torch.ones(J, device=device)
+    elif joints3d_conf.dim() == 1:
+        joints3d_conf = joints3d_conf.to(device)
+
+    shape_prior_weight = float(shape_prior_weight)
+
+    def closure():
+        optimizer.zero_grad()
+        total_loss = betas.new_tensor(0.0)
+
+        for t in frame_indices:
+            pose_t = pose_init[t : t + 1].to(device)  # (1,72)
+            global_orient = pose_t[:, :3]
+            body_pose = pose_t[:, 3:]
+
+            smpl_out = smpl_model(
+                global_orient=global_orient, body_pose=body_pose, betas=betas
+            )
+            model_joints = smpl_out.joints  # (1, J_smpl, 3)
+
+            # Align root per frame by translation to remove global position
+            if joints_category == "orig":
+                root_idx_smpl = config.JOINT_MAP["MidHip"]
+                root_idx_target = config.JOINT_MAP["MidHip"]
+            else:
+                root_idx_smpl = config.AMASS_JOINT_MAP["MidHip"]
+                root_idx_target = config.AMASS_JOINT_MAP["MidHip"]
+
+            model_root = model_joints[:, root_idx_smpl, :]  # (1,3)
+            target_root = j3d_world[t : t + 1, root_idx_target, :].to(device)  # (1,3)
+
+            transl_t = target_root - model_root  # (1,3)
+            model_joints_world = model_joints + transl_t.unsqueeze(1)  # (1,J_smpl,3)
+
+            # Map to observed joint layout
+            model_joints_sub = model_joints_world[:, smpl_index, :]
+            target_j3d_sub = j3d_world[t : t + 1, :, :].to(device)[:, corr_index, :]
+
+            joint3d_error = (model_joints_sub - target_j3d_sub) ** 2  # (1,J,3)
+            joint3d_loss = (joints3d_conf[corr_index] ** 2) * joint3d_error.sum(dim=-1)
+            joint3d_loss = joint3d_loss.sum()
+
+            shape_reg = (shape_prior_weight**2) * (betas**2).sum()
+
+            total_loss = total_loss + joint3d_loss + shape_reg
+
+        total_loss.backward()
+        return total_loss
+
+    if use_lbfgs:
+        optimizer = torch.optim.LBFGS(
+            [betas],
+            max_iter=num_iters,
+            lr=step_size,
+            line_search_fn="strong_wolfe",
+        )
+        optimizer.step(closure)
+    else:
+        optimizer = torch.optim.Adam([betas], lr=step_size, betas=(0.9, 0.999))
+        for _ in range(num_iters):
+            loss = closure()
+            # detached value only for logging if needed
+            _ = loss.item()
+
+    return betas.detach()
 
 
 @torch.no_grad()

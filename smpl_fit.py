@@ -14,7 +14,7 @@ from tqdm import tqdm
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 import config
 from io_utils import load_motion_data, write_smplx_zip
-from smplify import SMPLify3D
+from smplify import SMPLify3D, optimize_shape_multi_frame
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,18 @@ def parse_args():
         type=int,
         default=1,
         help="Input batch size.",
+    )
+    parser.add_argument(
+        "--num-shape-iters",
+        type=int,
+        default=40,
+        help="Number of LBFGS iterations for multi-frame shape optimization.",
+    )
+    parser.add_argument(
+        "--num-shape-frames",
+        type=int,
+        default=50,
+        help="Max number of frames to use for shape optimization (-1 for all).",
     )
     parser.add_argument(
         "--num-iters",
@@ -167,7 +179,37 @@ def main():
         init_mean_pose = torch.as_tensor(f["pose"][:]).unsqueeze(0).float().to(device)
         init_mean_shape = torch.as_tensor(f["shape"][:]).unsqueeze(0).float().to(device)
 
-    # Initialize SMPLify3D
+    # Prepare output directory
+    purename = input_path.stem
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    dir_save = opt.work_dir.expanduser() / purename / f"{timestamp}"
+    dir_save.mkdir(parents=True, exist_ok=True)
+    logger.info("Saving results to %s", dir_save)
+
+    # Stage 1: Multi-frame shape optimization
+    logger.info("Starting multi-frame shape optimization...")
+    if opt.num_shape_frames < 0 or opt.num_shape_frames >= T:
+        frame_indices = list(range(T))
+    else:
+        frame_indices = list(range(opt.num_shape_frames))
+    logger.info("Running shape optimization on %d / %d frames", len(frame_indices), T)
+    betas_opt = optimize_shape_multi_frame(
+        smpl_model,
+        init_betas=init_mean_shape,
+        pose_init=init_mean_pose.repeat(T, 1),
+        j3d_world=data_tensor,
+        joints_category=skeleton,
+        num_iters=opt.num_shape_iters,
+        step_size=1e-1,
+        use_lbfgs=not opt.use_adam,
+        device=device,
+        frame_indices=frame_indices,
+        joints3d_conf=confidence_input,
+        shape_prior_weight=5.0,
+    )
+    logger.info("Shape optimization finished.")
+
+    # Stage 2: Per-frame pose/translation optimization
     logger.info("Initializing SMPLify3D...")
     smplify = SMPLify3D(
         smplxmodel=smpl_model,
@@ -178,13 +220,6 @@ def main():
         device=device,
     )
     logger.info("SMPLify3D initialized.")
-
-    # Prepare output directory
-    purename = input_path.stem
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    dir_save = opt.work_dir.expanduser() / purename / f"{timestamp}"
-    dir_save.mkdir(parents=True, exist_ok=True)
-    logger.info("Saving results to %s", dir_save)
 
     pbar = tqdm(
         range(T),
@@ -204,7 +239,7 @@ def main():
     keypoints_3d = torch.zeros(opt.batch_size, J, 3, device=device)
 
     prev_pose = init_mean_pose.to(device)
-    prev_betas = init_mean_shape.to(device)
+    prev_betas = betas_opt.to(device)
     prev_cam = torch.tensor([0.0, 0.0, 0.0], device=device)
 
     for idx in pbar:

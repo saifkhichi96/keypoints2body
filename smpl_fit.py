@@ -230,17 +230,16 @@ def main():
 
     poses_out = []
     betas_out_all = []
-    cams_out_all = []
     transl_out_all = []
 
     pred_pose = torch.zeros(opt.batch_size, 72, device=device)
     pred_betas = torch.zeros(opt.batch_size, 10, device=device)
-    pred_cam_t = torch.zeros(opt.batch_size, 3, device=device)
+    pred_transl = torch.zeros(opt.batch_size, 3, device=device)
     keypoints_3d = torch.zeros(opt.batch_size, J, 3, device=device)
 
     prev_pose = init_mean_pose.to(device)
     prev_betas = betas_opt.to(device)
-    prev_cam = torch.tensor([0.0, 0.0, 0.0], device=device)
+    prev_transl = torch.tensor([0.0, 0.0, 0.0], device=device)
 
     for idx in pbar:
         keypoints_3d[0, :, :].copy_(data_tensor[idx])
@@ -248,7 +247,7 @@ def main():
         # Initialize with previous estimates
         pred_pose[0, :] = prev_pose
         pred_betas[0, :] = prev_betas
-        pred_cam_t[0, :] = prev_cam
+        pred_transl[0, :] = prev_transl
 
         # Optimize
         (
@@ -256,12 +255,12 @@ def main():
             new_opt_joints,
             new_opt_pose,
             new_opt_betas,
-            new_opt_cam_t,
+            new_opt_transl,
             new_opt_joint_loss,
         ) = smplify(
             pred_pose.detach(),
             pred_betas.detach(),
-            pred_cam_t.detach(),
+            pred_transl.detach(),
             keypoints_3d,
             conf_3d=confidence_input,
             seq_ind=idx,
@@ -269,8 +268,7 @@ def main():
 
         poses_out.append(new_opt_pose.detach().cpu().numpy())
         betas_out_all.append(new_opt_betas.detach().cpu().numpy())
-        cams_out_all.append(new_opt_cam_t.detach().cpu().numpy())
-        transl_out_all.append(keypoints_3d[0, 0, :].detach().cpu().numpy())
+        transl_out_all.append(new_opt_transl.detach().cpu().numpy())
 
         pbar.set_postfix(
             {
@@ -282,21 +280,19 @@ def main():
         # Update previous estimates
         prev_pose = new_opt_pose.detach()
         prev_betas = new_opt_betas.detach()
-        prev_cam = new_opt_cam_t.detach()
+        prev_transl = new_opt_transl.detach()
 
     # Concatenate frame results
     poses_out = np.concatenate(poses_out, axis=0)  # (T,72)
     betas_out_all = np.concatenate(betas_out_all, axis=0)  # (T,10)
-    cams_out_all = np.concatenate(cams_out_all, axis=0)  # (T,3)
     transl_out_all = np.concatenate(transl_out_all, axis=0)  # (T,3)
 
     # Write SMPL-X sequence
-    # NOTE: transl_out_all is unused for now
     zip_path = write_smplx_zip(
         dir_save,
         poses_out,
         betas_out_all,
-        cams_out_all,
+        transl_out_all,
     )
     logger.info("Done. Saved SMPL-X parameters to %s", zip_path)
 

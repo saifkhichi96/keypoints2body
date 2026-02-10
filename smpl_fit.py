@@ -35,7 +35,7 @@ def parse_args():
         dest="input_file",
         type=Path,
         required=True,
-        help="Path to 3D joints (.npy, .npz, or .csv). Shape (T,J,3).",
+        help="Path to 3D joints (.npy or .csv). Shape (T,J,3).",
     )
     parser.add_argument(
         "--batch-size",

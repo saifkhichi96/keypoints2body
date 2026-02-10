@@ -92,6 +92,7 @@ class SMPLify3D:
         seq_ind=0,
         joint_loss_weight=600.0,
         pose_preserve_weight=5.0,
+        freeze_betas=True,
     ):
         """Perform body fitting.
 
@@ -104,6 +105,7 @@ class SMPLify3D:
             seq_ind: index of the sequence
             joint_loss_weight: weight for the 3D joint loss
             pose_preserve_weight: weight for the pose preservation loss (only applied for seq_ind > 0)
+            freeze_betas: whether to freeze the betas during optimization
 
         Returns:
             vertices: Vertices of optimized shape
@@ -194,7 +196,7 @@ class SMPLify3D:
         camera_translation.requires_grad = True
 
         # --- if we use the sequence, fix the shape
-        if seq_ind == 0:
+        if seq_ind == 0 or not freeze_betas:
             betas.requires_grad = True
             body_opt_params = [body_pose, betas, global_orient, camera_translation]
         else:

@@ -25,7 +25,7 @@ JOINT_MAP = {
     "LCollar": 13,
     "Rcollar": 14,
     "Nose": 24,
-    "REye": 26,
+    "REye": 25,
     "LEye": 26,
     "REar": 27,
     "LEar": 28,
@@ -33,8 +33,7 @@ JOINT_MAP = {
     "RHeel": 34,
 }
 
-full_smpl_idx = range(24)
-key_smpl_idx = [0, 1, 4, 7, 2, 5, 8, 17, 19, 21, 16, 18, 20]
+smpl_idx = range(24)
 
 
 AMASS_JOINT_MAP = {

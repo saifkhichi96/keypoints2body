@@ -70,18 +70,16 @@ class SMPLify3D:
         # reLoad SMPL-X model
         self.smpl = smplxmodel
 
-        # select joint joint_category
+        # select joints_category
         self.joints_category = joints_category
 
         if joints_category == "orig":
-            self.smpl_index = config.full_smpl_idx
-            self.corr_index = config.full_smpl_idx
+            self.smpl_index = config.smpl_idx
+            self.corr_index = config.smpl_idx
         elif joints_category == "AMASS":
             self.smpl_index = config.amass_smpl_idx
             self.corr_index = config.amass_idx
         else:
-            self.smpl_index = None
-            self.corr_index = None
             raise ValueError("No such joints category!")
 
     # ---- get the man function here ------

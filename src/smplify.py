@@ -82,16 +82,29 @@ class SMPLify3D:
         else:
             raise ValueError("No such joints category!")
 
-    # ---- get the man function here ------
-    def __call__(self, init_pose, init_betas, init_cam_t, j3d, conf_3d=1.0, seq_ind=0):
+    def __call__(
+        self,
+        init_pose,
+        init_betas,
+        init_cam_t,
+        j3d,
+        conf_3d=1.0,
+        seq_ind=0,
+        joint_loss_weight=600.0,
+        pose_preserve_weight=5.0,
+    ):
         """Perform body fitting.
-        Input:
+
+        Args:
             init_pose: SMPL pose estimate
             init_betas: SMPL betas estimate
             init_cam_t: Camera translation estimate
             j3d: joints 3d aka keypoints
             conf_3d: confidence for 3d joints
-                        seq_ind: index of the sequence
+            seq_ind: index of the sequence
+            joint_loss_weight: weight for the 3D joint loss
+            pose_preserve_weight: weight for the pose preservation loss (only applied for seq_ind > 0)
+
         Returns:
             vertices: Vertices of optimized shape
             joints: 3D joints of optimized shape
@@ -99,6 +112,7 @@ class SMPLify3D:
             betas: SMPL beta parameters of optimized shape
             camera_translation: Camera translation
         """
+        pose_preserve_weight = pose_preserve_weight if seq_ind > 0 else 0.0
 
         # Split SMPL pose to body pose and global orientation
         body_pose = init_pose[:, 3:].detach().clone()
@@ -211,8 +225,8 @@ class SMPLify3D:
                     self.pose_prior,
                     joints3d_conf=conf_3d,
                     camera_translation=camera_translation,
-                    joint_loss_weight=600.0,
-                    pose_preserve_weight=5.0,
+                    joint_loss_weight=joint_loss_weight,
+                    pose_preserve_weight=pose_preserve_weight,
                 )
                 loss.backward()
                 return loss
@@ -238,7 +252,8 @@ class SMPLify3D:
                     self.pose_prior,
                     joints3d_conf=conf_3d,
                     camera_translation=camera_translation,
-                    joint_loss_weight=600.0,
+                    joint_loss_weight=joint_loss_weight,
+                    pose_preserve_weight=pose_preserve_weight,
                 )
                 body_optimizer.zero_grad()
                 loss.backward()

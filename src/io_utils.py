@@ -199,6 +199,14 @@ def load_motion_data(path: Path) -> tuple[np.ndarray, str, int]:
             for row in rows
         ]
         joints = np.array(joints)
+    elif ext == ".npz":
+        data = np.load(path)
+        if "joints" in data:
+            joints = data["joints"][:, :22]
+        else:
+            raise ValueError(
+                f"Unsupported .npz format: expected 'joints' or 'pose' array, found {list(data.keys())}"
+            )
     else:
         raise ValueError(f"Unsupported 3D joints file format: {ext}")
 

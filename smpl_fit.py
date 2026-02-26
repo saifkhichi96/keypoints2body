@@ -14,6 +14,7 @@ from tqdm import tqdm
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 import config
 from io_utils import load_motion_data, write_smplx_zip
+from models.smpl_data import SMPLData
 from smplify import SMPLify3D, optimize_shape_multi_frame
 
 logger = logging.getLogger(__name__)
@@ -250,21 +251,24 @@ def main():
         pred_transl[0, :] = prev_transl
 
         # Optimize
-        (
-            new_opt_vertices,
-            new_opt_joints,
-            new_opt_pose,
-            new_opt_betas,
-            new_opt_transl,
-            new_opt_joint_loss,
-        ) = smplify(
-            pred_pose.detach(),
-            pred_betas.detach(),
-            pred_transl.detach(),
-            keypoints_3d,
+        init_params = SMPLData(
+            betas=pred_betas.detach(),
+            global_orient=pred_pose[:, :3].detach(),
+            body_pose=pred_pose[:, 3:].detach(),
+            transl=pred_transl.detach(),
+        )
+        fit_result = smplify(
+            init_params=init_params,
+            j3d=keypoints_3d,
+            init_cam_t=pred_transl.detach(),
             conf_3d=confidence_input,
             seq_ind=idx,
         )
+
+        new_opt_pose = fit_result.params.pose
+        new_opt_betas = fit_result.params.betas
+        new_opt_transl = fit_result.params.transl
+        new_opt_joint_loss = fit_result.loss
 
         poses_out.append(new_opt_pose.detach().cpu().numpy())
         betas_out_all.append(new_opt_betas.detach().cpu().numpy())

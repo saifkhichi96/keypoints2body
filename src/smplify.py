@@ -11,6 +11,7 @@ from customloss import (
     body_fitting_loss_3d,
     camera_fitting_loss_3d,
 )
+from models.smpl_data import BodyModelFitResult, SMPLData
 from prior import MaxMixturePrior
 
 logger = logging.getLogger(__name__)
@@ -196,21 +197,19 @@ class SMPLify3D:
 
     def __call__(
         self,
-        init_pose,
-        init_betas,
-        init_cam_t,
-        j3d,
+        init_params: SMPLData,
+        j3d: torch.Tensor,
+        init_cam_t: Optional[torch.Tensor] = None,
         conf_3d=1.0,
         seq_ind=0,
         joint_loss_weight=600.0,
         pose_preserve_weight=5.0,
         freeze_betas=True,
-    ):
+    ) -> BodyModelFitResult:
         """Perform body fitting.
 
         Args:
-            init_pose: SMPL pose estimate
-            init_betas: SMPL betas estimate
+            init_params: initial SMPL parameters
             init_cam_t: Camera translation estimate
             j3d: joints 3d aka keypoints
             conf_3d: confidence for 3d joints
@@ -228,21 +227,26 @@ class SMPLify3D:
         """
         pose_preserve_weight = pose_preserve_weight if seq_ind > 0 else 0.0
 
-        # Split SMPL pose to body pose and global orientation
-        body_pose = init_pose[:, 3:].detach().clone()
-        global_orient = init_pose[:, :3].detach().clone()
-        betas = init_betas.detach().clone()
+        body_pose = init_params.body_pose.detach().clone()
+        global_orient = init_params.global_orient.detach().clone()
+        betas = init_params.betas.detach().clone()
 
         # use guess 3d to get the initial
         smpl_output = self.smpl(
-            global_orient=global_orient, body_pose=body_pose, betas=betas
+            global_orient=global_orient,
+            body_pose=body_pose,
+            betas=betas,
         )
         model_joints = smpl_output.joints
 
-        init_cam_t = guess_init_3d(model_joints, j3d, self.joints_category).detach()
+        if init_cam_t is None:
+            init_cam_t = guess_init_3d(model_joints, j3d, self.joints_category).detach()
+        else:
+            init_cam_t = init_cam_t.detach().clone()
         camera_translation = init_cam_t.clone()
 
-        preserve_pose = init_pose[:, 3:].detach().clone()
+        preserve_pose = body_pose.detach().clone()
+
         # -------------Step 1: Optimize camera translation and body orientation--------
         # Optimize only camera translation and body orientation
         body_pose.requires_grad = False
@@ -399,7 +403,16 @@ class SMPLify3D:
 
         vertices = smpl_output.vertices.detach()
         joints = smpl_output.joints.detach()
-        pose = torch.cat([global_orient, body_pose], dim=-1).detach()
-        betas = betas.detach()
+        fitted_params = SMPLData(
+            betas=betas.detach(),
+            global_orient=global_orient.detach(),
+            body_pose=body_pose.detach(),
+            transl=camera_translation.detach(),
+        )
 
-        return vertices, joints, pose, betas, camera_translation, final_loss
+        return BodyModelFitResult(
+            params=fitted_params,
+            vertices=vertices,
+            joints=joints,
+            loss=final_loss,
+        )

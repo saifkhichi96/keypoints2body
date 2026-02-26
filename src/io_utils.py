@@ -4,6 +4,9 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
+import torch
+
+from models.smpl_data import SMPLData
 
 
 def _osim_to_smpl_coords(data: np.ndarray) -> np.ndarray:
@@ -280,3 +283,35 @@ def write_smplx_zip(
             zf.writestr(name, buf.getvalue())
 
     return zip_path
+
+
+def write_smplx_zip_from_smpl_data(
+    output_dir: Path,
+    smpl_data: SMPLData,
+    zip_name: str = "smpl_params.zip",
+    person_idx: int = 0,
+) -> Path:
+    """Write SMPL-X zip directly from a SMPLData object."""
+
+    pose = smpl_data.pose
+    betas = smpl_data.betas
+    transl = smpl_data.transl
+
+    if transl is None:
+        raise ValueError("smpl_data.transl is required to export SMPL-X zip")
+
+    if isinstance(pose, torch.Tensor):
+        pose = pose.detach().cpu().numpy()
+    if isinstance(betas, torch.Tensor):
+        betas = betas.detach().cpu().numpy()
+    if isinstance(transl, torch.Tensor):
+        transl = transl.detach().cpu().numpy()
+
+    return write_smplx_zip(
+        output_dir=output_dir,
+        poses=pose,
+        betas=betas,
+        transl=transl,
+        zip_name=zip_name,
+        person_idx=person_idx,
+    )

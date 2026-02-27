@@ -79,6 +79,93 @@ Supported sequence inputs:
 - dict blocks:
   - ``{"body": (T,K,3|4), "left_hand": (T,21,3|4), "right_hand": (T,21,3|4), "face": (T,F,3|4)}``
 
+Model-Specific Examples
+-----------------------
+
+SMPL (body-only, AMASS layout)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import numpy as np
+   from keypoints2body import optimize_params_frame
+
+   body22 = np.random.randn(22, 3).astype("float32")
+   result = optimize_params_frame(
+       body22,
+       body_model="smpl",
+       joint_layout="AMASS",
+   )
+
+SMPLH (body + hands via dict blocks)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import numpy as np
+   from keypoints2body import optimize_params_frame
+
+   obs = {
+       "body": np.random.randn(22, 3).astype("float32"),
+       "left_hand": np.random.randn(21, 3).astype("float32"),
+       "right_hand": np.random.randn(21, 3).astype("float32"),
+   }
+   result = optimize_params_frame(
+       obs,
+       body_model="smplh",
+       joint_layout=None,
+   )
+
+SMPLX (body + hands + face via dict blocks)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import numpy as np
+   from keypoints2body import optimize_params_frame
+
+   obs = {
+       "body": np.random.randn(22, 3).astype("float32"),
+       "left_hand": np.random.randn(21, 3).astype("float32"),
+       "right_hand": np.random.randn(21, 3).astype("float32"),
+       "face": np.random.randn(68, 3).astype("float32"),
+   }
+   result = optimize_params_frame(
+       obs,
+       body_model="smplx",
+       joint_layout=None,
+   )
+
+MANO (hand-only)
+~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import numpy as np
+   from keypoints2body import optimize_params_frame
+
+   hand21 = np.random.randn(21, 3).astype("float32")
+   result = optimize_params_frame(
+       hand21,
+       body_model="mano",
+       joint_layout=None,
+   )
+
+FLAME (face-only)
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import numpy as np
+   from keypoints2body import optimize_params_frame
+
+   face68 = np.random.randn(68, 3).astype("float32")
+   result = optimize_params_frame(
+       face68,
+       body_model="flame",
+       joint_layout=None,
+   )
+
 Joint layout adapters
 ---------------------
 

@@ -187,8 +187,9 @@ Add a new body-model family variant
 
 1. Extend model dataclasses if new params are required.
 2. Update ``api.model_factory`` loading logic.
-3. Ensure return typing maps correctly from ``body_model`` input.
-4. Add docs/examples and API tests.
+3. Register capability expectations (loading-only vs optimization-ready).
+4. Ensure return typing maps correctly from ``body_model`` input.
+5. Add docs/examples and API tests.
 
 Contributor checklist
 ---------------------

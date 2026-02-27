@@ -4,15 +4,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional
 
+ModelType = Literal["smpl", "smplh", "smplx", "mano", "flame"]
+
 
 @dataclass
 class BodyModelConfig:
     """Configuration for loading a body model backend."""
 
-    model_type: Literal["smpl", "smplh", "smplx"] = "smpl"
+    model_type: ModelType = "smpl"
     model_family: str = "smpl_family"
     gender: str = "neutral"
-    ext: str = "pkl"
+    ext: Optional[str] = None
     batch_size: int = 1
     model_dir: Path = Path("./data/models/")
 

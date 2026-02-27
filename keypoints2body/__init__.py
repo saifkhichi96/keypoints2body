@@ -5,6 +5,8 @@ from .api.sequence import optimize_params_sequence, optimize_shape_sequence
 from .models.smpl_data import (
     BodyModelFitResult,
     BodyModelParams,
+    FLAMEData,
+    MANOData,
     SMPLData,
     SMPLHData,
     SMPLXData,
@@ -22,6 +24,8 @@ __all__ = [
     "optimize_shape_sequence",
     "BodyModelFitResult",
     "BodyModelParams",
+    "MANOData",
+    "FLAMEData",
     "SMPLData",
     "SMPLHData",
     "SMPLXData",

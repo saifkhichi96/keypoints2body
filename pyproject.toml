@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "keypoints2body"
 version = "0.1.0"
-description = "SMPL/SMPLH/SMPLX optimization library for single frames and sequences"
+description = "Body model fitting to keypoint data"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [

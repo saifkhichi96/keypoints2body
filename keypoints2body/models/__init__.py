@@ -1,6 +1,8 @@
 from .smpl_data import (
     BodyModelFitResult,
     BodyModelParams,
+    FLAMEData,
+    MANOData,
     SMPLData,
     SMPLHData,
     SMPLXData,
@@ -9,6 +11,8 @@ from .smpl_data import (
 __all__ = [
     "BodyModelFitResult",
     "BodyModelParams",
+    "MANOData",
+    "FLAMEData",
     "SMPLData",
     "SMPLHData",
     "SMPLXData",

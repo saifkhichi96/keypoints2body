@@ -93,6 +93,24 @@ class SMPLXData(SMPLHData):
 
 
 @dataclass
+class MANOData(BodyModelParams):
+    """MANO parameters."""
+
+    hand_pose: Optional[ArrayLike] = None
+
+
+@dataclass
+class FLAMEData(BodyModelParams):
+    """FLAME parameters."""
+
+    expression: Optional[ArrayLike] = None
+    jaw_pose: Optional[ArrayLike] = None
+    neck_pose: Optional[ArrayLike] = None
+    leye_pose: Optional[ArrayLike] = None
+    reye_pose: Optional[ArrayLike] = None
+
+
+@dataclass
 class BodyModelFitResult:
     """Typed result for fitting routines."""
 

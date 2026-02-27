@@ -4,7 +4,12 @@ from typing import Optional
 
 import torch
 
-from ..core.config import BodyModelConfig, FrameOptimizeConfig, SequenceOptimizeConfig
+from ..core.config import (
+    BodyModelConfig,
+    FrameOptimizeConfig,
+    ModelType,
+    SequenceOptimizeConfig,
+)
 from ..core.engine import (
     OptimizeEngine,
     default_init_params,
@@ -16,13 +21,14 @@ from ..models.smpl_data import BodyModelFitResult, BodyModelParams, SMPLData
 from .model_factory import load_body_model
 
 DEFAULT_MEAN_FILE = "./data/models/neutral_smpl_mean_params.h5"
+OPTIMIZATION_BODY_MODELS = {"smpl", "smplh", "smplx"}
 
 
 def optimize_params_sequence(
     joints_seq,
     *,
     init_params: Optional[BodyModelParams] = None,
-    body_model: str = "smpl",
+    body_model: ModelType = "smpl",
     joint_layout: Optional[str] = None,
     model=None,
     config: Optional[SequenceOptimizeConfig | dict] = None,
@@ -33,7 +39,9 @@ def optimize_params_sequence(
     Args:
         joints_seq: Sequence keypoints with shape ``(T,K,3)`` or ``(T,K,4)``.
         init_params: Optional initial parameters for frame 0.
-        body_model: Body model type (for example ``"smpl"``).
+        body_model: Body model backend. Recognized values are ``smpl``, ``smplh``,
+            ``smplx``, ``mano``, and ``flame``. The current optimization estimator
+            supports ``smpl``/``smplh``/``smplx``.
         joint_layout: Optional explicit layout label for adapter selection.
         model: Optional preloaded body model instance.
         config: Optional sequence config or dict equivalent.
@@ -64,6 +72,12 @@ def optimize_params_sequence(
         raise NotImplementedError(
             f"input_type='{seq_cfg.frame.input_type}' is not implemented in this release. "
             "Current APIs support only joints3d."
+        )
+    if body_model not in OPTIMIZATION_BODY_MODELS:
+        raise NotImplementedError(
+            f"body_model='{body_model}' is registered but not yet supported by the "
+            "optimization estimator. Add a model-specific estimator under "
+            "keypoints2body.core.estimators."
         )
 
     xyz, conf = normalize_joints_sequence(joints_seq)
@@ -115,6 +129,11 @@ def optimize_params_sequence(
             coordinate_mode=seq_cfg.frame.coordinate_mode,
         )
     else:
+        if not isinstance(init_params, SMPLData):
+            raise ValueError(
+                "init_params must be SMPLData-compatible for optimization-based "
+                "sequence fitting in this release."
+            )
         prev = init_params.to(device)
 
     for idx in range(xyz.shape[0]):
@@ -160,7 +179,7 @@ def optimize_params_sequence(
 def optimize_shape_sequence(
     joints_seq,
     *,
-    body_model: str = "smpl",
+    body_model: ModelType = "smpl",
     joint_layout: Optional[str] = None,
     model=None,
     config: Optional[SequenceOptimizeConfig | dict] = None,
@@ -170,7 +189,7 @@ def optimize_shape_sequence(
 
     Args:
         joints_seq: Sequence keypoints input.
-        body_model: Body model type.
+        body_model: Body model backend identifier.
         joint_layout: Optional explicit layout label.
         model: Optional preloaded body model instance.
         config: Optional sequence config.

@@ -5,8 +5,9 @@ keypoints2body Documentation
    :alt: keypoints2body
    :width: 100%
 
-`keypoints2body` is a Python library for fitting SMPL-family body models (SMPL/SMPLH/SMPLX)
-to 3D joints from single frames or motion sequences.
+`keypoints2body` is a Python library for body model fitting to keypoint data.
+It provides optimization pipelines for SMPL-family models and extensible
+model-loading architecture for additional families (for example MANO and FLAME).
 
 .. toctree::
    :maxdepth: 2

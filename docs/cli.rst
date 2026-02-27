@@ -12,14 +12,17 @@ Fit One Frame
 
 .. code-block:: bash
 
-   keypoints2body-fit-frame --file ./frame.npy --layout AMASS
+   keypoints2body-fit-frame --file ./frame.npy --layout AMASS --body-model smpl
 
 Fit Sequence
 ------------
 
 .. code-block:: bash
 
-   keypoints2body-fit-seq --file ./sequence.npy --layout AMASS
+   keypoints2body-fit-seq --file ./sequence.npy --layout AMASS --body-model smpl
+
+``--body-model`` accepts ``smpl``, ``smplh``, ``smplx``, ``mano``, ``flame``.
+Current optimization CLIs are implemented for SMPL-family fitting.
 
 Evaluate on AMASS
 -----------------

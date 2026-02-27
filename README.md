@@ -7,8 +7,9 @@
 
 ![keypoints2body header](docs/assets/header.svg)
 
-`keypoints2body` is a Python library for optimizing SMPL-family body model parameters
-from 3D joints for both single frames and motion sequences.
+`keypoints2body` is a Python library for body model fitting to keypoint data.
+It supports SMPL-family optimization APIs and model loading hooks for additional
+families such as MANO and FLAME.
 
 ## Install
 
@@ -23,7 +24,7 @@ import numpy as np
 from keypoints2body import optimize_params_frame
 
 joints = np.zeros((22, 3), dtype=np.float32)
-result = optimize_params_frame(joints, joint_layout="AMASS")
+result = optimize_params_frame(joints, body_model="smpl", joint_layout="AMASS")
 ```
 
 ## Documentation

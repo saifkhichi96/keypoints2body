@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
   <title id="title">keypoints2body</title>
-  <desc id="desc">SMPL optimization library header</desc>
+  <desc id="desc">Body model fitting to keypoint data</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#0f172a"/>
@@ -23,7 +23,7 @@
     </text>
     <rect x="0" y="62" width="340" height="6" rx="3" fill="url(#accent)"/>
     <text x="0" y="108" fill="#cbd5e1" font-size="24" font-family="Segoe UI, Helvetica, Arial, sans-serif">
-      SMPL/SMPLH/SMPLX fitting for frames and motion sequences
+      Body model fitting to keypoint data
     </text>
     <text x="0" y="144" fill="#94a3b8" font-size="18" font-family="Segoe UI, Helvetica, Arial, sans-serif">
       Python API + CLI, typed data models, configurable optimization engine

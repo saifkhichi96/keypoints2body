@@ -13,17 +13,26 @@ The package exports three main functions:
 Body model selection
 --------------------
 
-All optimization APIs support:
+Recognized model backends:
 
 - ``body_model="smpl"``
 - ``body_model="smplh"``
 - ``body_model="smplx"``
+- ``body_model="mano"``
+- ``body_model="flame"``
+
+Current optimization estimator support:
+
+- Fully supported in optimization APIs: ``smpl``, ``smplh``, ``smplx``
+- Registered for model loading and type system: ``mano``, ``flame``
 
 Returned ``result.params`` type depends on model:
 
 - ``SMPLData`` for SMPL
 - ``SMPLHData`` for SMPL-H
 - ``SMPLXData`` for SMPL-X
+- ``MANOData`` for MANO (when estimator integration is enabled)
+- ``FLAMEData`` for FLAME (when estimator integration is enabled)
 
 Frame Optimization
 ------------------

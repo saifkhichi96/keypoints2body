@@ -61,3 +61,11 @@ AMASS_JOINT_MAP = {
 
 AMASS_IDX = range(22)
 AMASS_SMPL_IDX = range(22)
+
+# Canonical SMPL-X joint blocks used by block-wise observation fitting.
+# These are used as default targets when callers provide explicit body/hand/face
+# keypoint blocks (dict input) to the public APIs.
+SMPLX_BODY_IDX = range(22)
+SMPLX_LEFT_HAND_IDX = range(25, 46)
+SMPLX_RIGHT_HAND_IDX = range(46, 67)
+SMPLX_FACE_IDX_START = 67

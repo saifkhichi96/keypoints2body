@@ -11,6 +11,8 @@ from ..models.smpl_data import (
     FLAMEData,
     MANOData,
     SMPLData,
+    SMPLHData,
+    SMPLXData,
 )
 from .config import FrameOptimizeConfig, SequenceOptimizeConfig
 from .estimators.factory import create_estimator
@@ -44,6 +46,7 @@ class OptimizeEngine:
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor],
         seq_ind: int,
+        target_model_indices: Optional[torch.Tensor] = None,
     ) -> BodyModelFitResult:
         """Fit one frame using the active estimator.
 
@@ -61,6 +64,7 @@ class OptimizeEngine:
             j3d=j3d,
             conf_3d=conf_3d,
             seq_ind=seq_ind,
+            target_model_indices=target_model_indices,
         )
 
 
@@ -106,9 +110,17 @@ def default_init_params(
     pose = mean_pose.clone().detach()
     betas = mean_shape.clone().detach()
     if coordinate_mode == "world":
-        transl = guess_init_transl_from_root(
-            model, pose, betas, joints_frame, joints_category=joints_category
-        )
+        if joints_category == "GENERIC":
+            smpl_out = model(
+                global_orient=pose[:, :3],
+                body_pose=pose[:, 3:],
+                betas=betas,
+            )
+            transl = (joints_frame[:, 0, :] - smpl_out.joints[:, 0, :]).detach()
+        else:
+            transl = guess_init_transl_from_root(
+                model, pose, betas, joints_frame, joints_category=joints_category
+            )
     else:
         transl = None
     return SMPLData(
@@ -151,6 +163,43 @@ def default_init_params_for_model(
             reye_pose=torch.zeros((batch, 3), device=device),
         )
     raise ValueError(f"default_init_params_for_model is unsupported for {model_type}")
+
+
+def upgrade_smpl_family_init_params(
+    base_params: SMPLData,
+    model_type: str,
+    model,
+    device: torch.device,
+) -> BodyModelParams:
+    """Upgrade SMPL base init params to SMPLH/SMPLX with zero-initialized extras."""
+    if model_type == "smpl":
+        return base_params
+    if model_type == "smplh":
+        hand_dim = int(getattr(model, "NUM_HAND_JOINTS", 15)) * 3
+        return SMPLHData(
+            betas=base_params.betas,
+            global_orient=base_params.global_orient,
+            body_pose=base_params.body_pose,
+            transl=base_params.transl,
+            left_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
+            right_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
+        )
+    if model_type == "smplx":
+        hand_dim = int(getattr(model, "NUM_HAND_JOINTS", 15)) * 3
+        expr_dim = int(getattr(model, "num_expression_coeffs", 10))
+        return SMPLXData(
+            betas=base_params.betas,
+            global_orient=base_params.global_orient,
+            body_pose=base_params.body_pose,
+            transl=base_params.transl,
+            left_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
+            right_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
+            expression=torch.zeros((base_params.body_pose.shape[0], expr_dim), device=device),
+            jaw_pose=torch.zeros((base_params.body_pose.shape[0], 3), device=device),
+            leye_pose=torch.zeros((base_params.body_pose.shape[0], 3), device=device),
+            reye_pose=torch.zeros((base_params.body_pose.shape[0], 3), device=device),
+        )
+    raise ValueError(f"Unsupported SMPL-family model_type: {model_type}")
 
 
 def optimize_shape_pass(

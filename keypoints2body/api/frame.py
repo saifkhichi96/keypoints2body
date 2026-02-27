@@ -10,14 +10,20 @@ from ..core.engine import (
     default_init_params,
     default_init_params_for_model,
     load_mean_pose_shape,
+    upgrade_smpl_family_init_params,
 )
-from ..core.joints.adapters import adapt_layout_and_conf, normalize_joints_frame
+from ..core.joints.adapters import (
+    adapt_layout_and_conf,
+    normalize_frame_observations,
+)
 from ..models.smpl_data import (
     BodyModelFitResult,
     BodyModelParams,
     FLAMEData,
     MANOData,
     SMPLData,
+    SMPLHData,
+    SMPLXData,
 )
 from .model_factory import load_body_model
 
@@ -38,7 +44,10 @@ def optimize_params_frame(
     """Optimize body parameters for a single frame of 3D joints.
 
     Args:
-        joints: Frame keypoints with shape ``(K,3)`` or ``(K,4)``.
+        joints: Frame keypoints as either:
+            - array/tensor with shape ``(K,3)`` or ``(K,4)``, or
+            - dict blocks (for example body/hands/face) where each value is
+              ``(K,3)`` or ``(K,4)``.
         prev_params: Optional warm-start parameters from a previous fit.
         body_model: Body model backend. Recognized values are ``smpl``, ``smplh``,
             ``smplx``, ``mano``, and ``flame``.
@@ -66,8 +75,10 @@ def optimize_params_frame(
         )
     if body_model not in OPTIMIZATION_BODY_MODELS:
         raise ValueError(f"Unsupported body_model: {body_model}")
-    j3d, conf_3d = normalize_joints_frame(joints)
-    if body_model in {"smpl", "smplh", "smplx"}:
+    j3d, conf_3d, model_indices, in_layout = normalize_frame_observations(
+        joints, layout=joint_layout, body_model=body_model
+    )
+    if body_model in {"smpl", "smplh", "smplx"} and in_layout != "GENERIC":
         j_np = j3d.squeeze(0).cpu().numpy()[None, ...]
         c_np = conf_3d.cpu().numpy()[None, ...]
         j_np, c_np, out_layout = adapt_layout_and_conf(j_np, c_np, joint_layout)
@@ -76,8 +87,9 @@ def optimize_params_frame(
         if out_layout not in ("SMPL24", "AMASS"):
             raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
         frame_cfg.joints_category = out_layout
+        model_indices = None
     else:
-        if joint_layout is not None:
+        if joint_layout is not None and in_layout != "GENERIC":
             raise ValueError(
                 "joint_layout adapters are currently defined for SMPL-family body "
                 "layouts only. Use raw MANO/FLAME joint order with joint_layout=None."
@@ -85,6 +97,8 @@ def optimize_params_frame(
         j3d = j3d.to(device)
         conf_3d = conf_3d.to(device)
         frame_cfg.joints_category = "GENERIC"
+        if model_indices is not None:
+            model_indices = model_indices.to(device=device, dtype=torch.long)
 
     if model is None:
         body_cfg = BodyModelConfig(model_type=body_model)
@@ -99,13 +113,19 @@ def optimize_params_frame(
             init_mean_pose, init_mean_shape = load_mean_pose_shape(
                 DEFAULT_MEAN_FILE, device
             )
-            init_params = default_init_params(
+            base_init = default_init_params(
                 init_mean_pose,
                 init_mean_shape,
                 j3d,
                 model,
                 joints_category=frame_cfg.joints_category,
                 coordinate_mode=frame_cfg.coordinate_mode,
+            )
+            init_params = upgrade_smpl_family_init_params(
+                base_init,
+                model_type=body_model,
+                model=model,
+                device=device,
             )
         else:
             init_params = default_init_params_for_model(
@@ -118,8 +138,8 @@ def optimize_params_frame(
     else:
         expected_type = {
             "smpl": SMPLData,
-            "smplh": SMPLData,
-            "smplx": SMPLData,
+            "smplh": SMPLHData,
+            "smplx": SMPLXData,
             "mano": MANOData,
             "flame": FLAMEData,
         }[body_model]
@@ -151,9 +171,37 @@ def optimize_params_frame(
                     transl=transl,
                     metadata=dict(getattr(init_params, "metadata", {})),
                 )
+                if isinstance(prev_params, SMPLHData):
+                    init_params = SMPLHData(
+                        betas=init_params.betas,
+                        global_orient=init_params.global_orient,
+                        body_pose=init_params.body_pose,
+                        transl=init_params.transl,
+                        metadata=init_params.metadata,
+                        left_hand_pose=prev_params.left_hand_pose,
+                        right_hand_pose=prev_params.right_hand_pose,
+                    )
+                if isinstance(prev_params, SMPLXData):
+                    init_params = SMPLXData(
+                        betas=init_params.betas,
+                        global_orient=init_params.global_orient,
+                        body_pose=init_params.body_pose,
+                        transl=init_params.transl,
+                        metadata=init_params.metadata,
+                        left_hand_pose=prev_params.left_hand_pose,
+                        right_hand_pose=prev_params.right_hand_pose,
+                        expression=prev_params.expression,
+                        jaw_pose=prev_params.jaw_pose,
+                        leye_pose=prev_params.leye_pose,
+                        reye_pose=prev_params.reye_pose,
+                    )
             else:
                 init_params.transl = j3d[:, 0, :].detach()
 
     return engine.fit_frame(
-        init_params=init_params, j3d=j3d, conf_3d=conf_3d, seq_ind=0
+        init_params=init_params,
+        j3d=j3d,
+        conf_3d=conf_3d,
+        seq_ind=0,
+        target_model_indices=model_indices,
     )

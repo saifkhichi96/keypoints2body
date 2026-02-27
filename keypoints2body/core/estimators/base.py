@@ -16,4 +16,5 @@ class BodyEstimator(Protocol):
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor],
         seq_ind: int,
+        target_model_indices: Optional[torch.Tensor] = None,
     ) -> BodyModelFitResult: ...

@@ -70,12 +70,14 @@ class OptimizationEstimator:
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor],
         seq_ind: int,
+        target_model_indices: Optional[torch.Tensor] = None,
     ) -> BodyModelFitResult:
         kwargs = dict(
             init_params=init_params,
             j3d=j3d,
             conf_3d=conf_3d,
             seq_ind=seq_ind,
+            target_model_indices=target_model_indices,
             joint_loss_weight=self.frame_config.joint_loss_weight,
             pose_preserve_weight=self.frame_config.pose_preserve_weight,
             freeze_betas=self.frame_config.freeze_betas,

@@ -6,6 +6,14 @@ from typing import Optional
 import numpy as np
 import torch
 
+from ..constants import (
+    AMASS_SMPL_IDX,
+    SMPL_IDX,
+    SMPLX_FACE_IDX_START,
+    SMPLX_LEFT_HAND_IDX,
+    SMPLX_RIGHT_HAND_IDX,
+)
+
 
 def _osim_to_smpl_coords(data: np.ndarray) -> np.ndarray:
     """Rotate OpenSim coordinates into SMPL axis convention."""
@@ -211,3 +219,148 @@ def adapt_layout_and_conf(
         _apply_adapter_conf(conf_seq, ad),
         ad.out_layout,
     )
+
+
+def normalize_frame_observations(
+    joints: np.ndarray | torch.Tensor | dict,
+    *,
+    layout: Optional[str],
+    body_model: str,
+) -> tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], str]:
+    """Normalize one-frame observations with optional block-wise dict input.
+
+    Returns:
+        j3d: ``(1,K,3)``
+        conf: ``(K,)``
+        model_indices: optional ``(K,)`` indices into model joints
+        out_layout: canonical layout label
+    """
+    if not isinstance(joints, dict):
+        j3d, conf = normalize_joints_frame(joints)
+        return j3d, conf, None, "AUTO"
+
+    def _norm_block(block) -> tuple[torch.Tensor, torch.Tensor]:
+        bj, bc = normalize_joints_frame(block)
+        return bj[:, :, :], bc
+
+    points_parts: list[torch.Tensor] = []
+    conf_parts: list[torch.Tensor] = []
+    idx_parts: list[torch.Tensor] = []
+
+    if "body" in joints:
+        body_pts, body_conf = _norm_block(joints["body"])
+        body_k = body_pts.shape[1]
+        if body_k == 24:
+            model_idx = torch.tensor(list(SMPL_IDX), dtype=torch.long)
+        elif body_k == 22:
+            model_idx = torch.tensor(list(AMASS_SMPL_IDX), dtype=torch.long)
+        else:
+            raise ValueError("body block must have 22 or 24 joints")
+        points_parts.append(body_pts)
+        conf_parts.append(body_conf)
+        idx_parts.append(model_idx)
+
+    if "left_hand" in joints:
+        if body_model not in {"smplh", "smplx"}:
+            raise ValueError("left_hand block requires body_model='smplh' or 'smplx'")
+        lh_pts, lh_conf = _norm_block(joints["left_hand"])
+        if lh_pts.shape[1] != len(list(SMPLX_LEFT_HAND_IDX)):
+            raise ValueError("left_hand block must have 21 joints")
+        points_parts.append(lh_pts)
+        conf_parts.append(lh_conf)
+        idx_parts.append(torch.tensor(list(SMPLX_LEFT_HAND_IDX), dtype=torch.long))
+
+    if "right_hand" in joints:
+        if body_model not in {"smplh", "smplx"}:
+            raise ValueError("right_hand block requires body_model='smplh' or 'smplx'")
+        rh_pts, rh_conf = _norm_block(joints["right_hand"])
+        if rh_pts.shape[1] != len(list(SMPLX_RIGHT_HAND_IDX)):
+            raise ValueError("right_hand block must have 21 joints")
+        points_parts.append(rh_pts)
+        conf_parts.append(rh_conf)
+        idx_parts.append(torch.tensor(list(SMPLX_RIGHT_HAND_IDX), dtype=torch.long))
+
+    if "face" in joints:
+        if body_model != "smplx":
+            raise ValueError("face block requires body_model='smplx'")
+        fc_pts, fc_conf = _norm_block(joints["face"])
+        fc_k = fc_pts.shape[1]
+        points_parts.append(fc_pts)
+        conf_parts.append(fc_conf)
+        idx_parts.append(
+            torch.arange(SMPLX_FACE_IDX_START, SMPLX_FACE_IDX_START + fc_k, dtype=torch.long)
+        )
+
+    if not points_parts:
+        raise ValueError("dict input must provide at least one of: body, left_hand, right_hand, face")
+
+    j3d = torch.cat(points_parts, dim=1)
+    conf = torch.cat(conf_parts, dim=0)
+    model_indices = torch.cat(idx_parts, dim=0)
+    return j3d, conf, model_indices, "GENERIC"
+
+
+def normalize_sequence_observations(
+    joints_seq: np.ndarray | torch.Tensor | dict,
+    *,
+    layout: Optional[str],
+    body_model: str,
+) -> tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], str]:
+    """Normalize sequence observations with optional block-wise dict input."""
+    if not isinstance(joints_seq, dict):
+        xyz, conf = normalize_joints_sequence(joints_seq)
+        return xyz, conf, None, "AUTO"
+
+    def _norm_block_seq(block) -> tuple[torch.Tensor, torch.Tensor]:
+        bxyz, bconf = normalize_joints_sequence(block)
+        return bxyz, bconf
+
+    pts_parts: list[torch.Tensor] = []
+    conf_parts: list[torch.Tensor] = []
+    idx_parts: list[torch.Tensor] = []
+    t_size: Optional[int] = None
+
+    for key in ("body", "left_hand", "right_hand", "face"):
+        if key not in joints_seq:
+            continue
+        p, c = _norm_block_seq(joints_seq[key])
+        if t_size is None:
+            t_size = p.shape[0]
+        elif p.shape[0] != t_size:
+            raise ValueError("all dict sequence blocks must share same T")
+
+        if key == "body":
+            if p.shape[1] == 24:
+                idx = torch.tensor(list(SMPL_IDX), dtype=torch.long)
+            elif p.shape[1] == 22:
+                idx = torch.tensor(list(AMASS_SMPL_IDX), dtype=torch.long)
+            else:
+                raise ValueError("body block must have 22 or 24 joints")
+        elif key == "left_hand":
+            if body_model not in {"smplh", "smplx"}:
+                raise ValueError("left_hand block requires body_model='smplh' or 'smplx'")
+            if p.shape[1] != 21:
+                raise ValueError("left_hand block must have 21 joints")
+            idx = torch.tensor(list(SMPLX_LEFT_HAND_IDX), dtype=torch.long)
+        elif key == "right_hand":
+            if body_model not in {"smplh", "smplx"}:
+                raise ValueError("right_hand block requires body_model='smplh' or 'smplx'")
+            if p.shape[1] != 21:
+                raise ValueError("right_hand block must have 21 joints")
+            idx = torch.tensor(list(SMPLX_RIGHT_HAND_IDX), dtype=torch.long)
+        else:
+            if body_model != "smplx":
+                raise ValueError("face block requires body_model='smplx'")
+            idx = torch.arange(SMPLX_FACE_IDX_START, SMPLX_FACE_IDX_START + p.shape[1], dtype=torch.long)
+
+        pts_parts.append(p)
+        conf_parts.append(c)
+        idx_parts.append(idx)
+
+    if not pts_parts:
+        raise ValueError("dict input must provide at least one of: body, left_hand, right_hand, face")
+
+    xyz = torch.cat(pts_parts, dim=1)
+    conf = torch.cat(conf_parts, dim=1)
+    model_indices = torch.cat(idx_parts, dim=0)
+    return xyz, conf, model_indices, "GENERIC"

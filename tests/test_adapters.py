@@ -3,8 +3,10 @@ import torch
 
 from keypoints2body.core.joints.adapters import (
     adapt_layout,
+    normalize_frame_observations,
     normalize_joints_frame,
     normalize_joints_sequence,
+    normalize_sequence_observations,
 )
 
 
@@ -36,3 +38,34 @@ def test_adapt_layout_manny_to_amass():
     out, layout = adapt_layout(seq, "Manny25")
     assert tuple(out.shape) == (3, 22, 3)
     assert layout == "AMASS"
+
+
+def test_normalize_frame_observations_dict_smplx():
+    obs = {
+        "body": np.zeros((22, 4), dtype=np.float32),
+        "left_hand": np.zeros((21, 3), dtype=np.float32),
+        "right_hand": np.zeros((21, 3), dtype=np.float32),
+        "face": np.zeros((10, 3), dtype=np.float32),
+    }
+    j3d, conf, model_idx, out_layout = normalize_frame_observations(
+        obs, layout=None, body_model="smplx"
+    )
+    assert tuple(j3d.shape) == (1, 74, 3)
+    assert tuple(conf.shape) == (74,)
+    assert tuple(model_idx.shape) == (74,)
+    assert out_layout == "GENERIC"
+
+
+def test_normalize_sequence_observations_dict_smplh():
+    obs = {
+        "body": np.zeros((4, 22, 3), dtype=np.float32),
+        "left_hand": np.zeros((4, 21, 3), dtype=np.float32),
+        "right_hand": np.zeros((4, 21, 3), dtype=np.float32),
+    }
+    xyz, conf, model_idx, out_layout = normalize_sequence_observations(
+        obs, layout=None, body_model="smplh"
+    )
+    assert tuple(xyz.shape) == (4, 64, 3)
+    assert tuple(conf.shape) == (4, 64)
+    assert tuple(model_idx.shape) == (64,)
+    assert out_layout == "GENERIC"

@@ -15,6 +15,21 @@ Model overview
 
 In code, these are selected with the ``body_model`` argument in public APIs.
 
+Observation formats
+-------------------
+
+Two input styles are supported:
+
+- Flat array/tensor keypoints (for body-centric layouts such as ``AMASS``/``SMPL24``).
+- Block-wise dict observations for richer constraints:
+  - ``body``
+  - ``left_hand``
+  - ``right_hand``
+  - ``face``
+
+For full SMPLH/SMPLX fitting, use the block-wise dict style so hand/face terms are
+directly constrained in the optimization loss.
+
 Common parameter fields
 -----------------------
 
@@ -113,4 +128,3 @@ Example
    joints = np.zeros((21, 3), dtype=np.float32)
    result = optimize_params_frame(joints, body_model="mano", joint_layout=None)
    print(type(result.params).__name__)  # MANOData
-

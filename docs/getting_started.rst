@@ -29,6 +29,7 @@ The public APIs and model factory accept ``body_model`` with one of:
 Current estimator coverage:
 
 - Optimization estimator (frame/sequence APIs): ``smpl``, ``smplh``, ``smplx``, ``mano``, ``flame``
+- SMPLH/SMPLX get strongest constraints when using dict block inputs with body + hand (+ face) keypoints.
 
 For a model-by-model parameter overview, see :doc:`body_models`.
 
@@ -98,6 +99,19 @@ Minimal Example
    joints = np.zeros((22, 3), dtype=np.float32)
    result = optimize_params_frame(joints, body_model="smpl", joint_layout="AMASS")
    print(result.params.pose.shape)
+
+Full SMPL-X Example (Body + Hands + Face)
+-----------------------------------------
+
+.. code-block:: python
+
+   obs = {
+       "body": body_joints_22_or_24,      # (K,3|4)
+       "left_hand": left_hand_joints_21,  # (21,3|4)
+       "right_hand": right_hand_joints_21,# (21,3|4)
+       "face": face_joints_f,             # (F,3|4)
+   }
+   result = optimize_params_frame(obs, body_model="smplx", joint_layout=None)
 
 Warm-start next frame
 ---------------------

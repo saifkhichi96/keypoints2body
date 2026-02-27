@@ -42,6 +42,7 @@ class MANOFitter:
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor] = None,
         seq_ind: int = 0,
+        target_model_indices: Optional[torch.Tensor] = None,
         joint_loss_weight: float = 600.0,
         pose_preserve_weight: float = 5.0,
         freeze_betas: bool = False,
@@ -55,6 +56,8 @@ class MANOFitter:
             conf_3d = torch.ones(j3d.shape[1], device=device)
         elif conf_3d.dim() == 2:
             conf_3d = conf_3d[0]
+        if target_model_indices is not None:
+            target_model_indices = target_model_indices.to(device=device, dtype=torch.long)
 
         global_orient = init_params.global_orient.clone().detach().to(device)
         hand_pose = init_params.hand_pose.clone().detach().to(device)
@@ -86,7 +89,10 @@ class MANOFitter:
                     "transl": transl if self.coordinate_mode == "world" else None,
                 },
             )
-            model_joints = out.joints[:, : j3d.shape[1], :]
+            if target_model_indices is None:
+                model_joints = out.joints[:, : j3d.shape[1], :]
+            else:
+                model_joints = out.joints[:, target_model_indices, :]
             if self.coordinate_mode == "camera":
                 model_joints = model_joints + transl
             loss = generic_keypoint_loss_3d(
@@ -184,6 +190,7 @@ class FLAMEFitter:
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor] = None,
         seq_ind: int = 0,
+        target_model_indices: Optional[torch.Tensor] = None,
         joint_loss_weight: float = 600.0,
         pose_preserve_weight: float = 5.0,
         freeze_betas: bool = False,
@@ -194,6 +201,8 @@ class FLAMEFitter:
             conf_3d = torch.ones(j3d.shape[1], device=device)
         elif conf_3d.dim() == 2:
             conf_3d = conf_3d[0]
+        if target_model_indices is not None:
+            target_model_indices = target_model_indices.to(device=device, dtype=torch.long)
 
         def _clone_opt(x: Optional[torch.Tensor], dim: int) -> torch.Tensor:
             if x is None:
@@ -256,7 +265,10 @@ class FLAMEFitter:
                     "transl": transl if self.coordinate_mode == "world" else None,
                 },
             )
-            model_joints = out.joints[:, : j3d.shape[1], :]
+            if target_model_indices is None:
+                model_joints = out.joints[:, : j3d.shape[1], :]
+            else:
+                model_joints = out.joints[:, target_model_indices, :]
             if self.coordinate_mode == "camera":
                 model_joints = model_joints + transl
             loss = generic_keypoint_loss_3d(

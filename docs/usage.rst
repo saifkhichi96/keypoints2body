@@ -54,6 +54,8 @@ Supported frame inputs:
 
 - ``(K, 3)`` xyz
 - ``(K, 4)`` xyz + confidence score
+- dict blocks for richer models:
+  - ``{"body": (K,3|4), "left_hand": (21,3|4), "right_hand": (21,3|4), "face": (F,3|4)}``
 
 Sequence Optimization
 ---------------------
@@ -74,6 +76,8 @@ Supported sequence inputs:
 
 - ``(T, K, 3)``
 - ``(T, K, 4)``
+- dict blocks:
+  - ``{"body": (T,K,3|4), "left_hand": (T,21,3|4), "right_hand": (T,21,3|4), "face": (T,F,3|4)}``
 
 Joint layout adapters
 ---------------------
@@ -86,7 +90,8 @@ For SMPL-family body fitting, the library supports these layouts via adapter reg
 - ``Halpe26`` (26 joints)
 - ``SpineTrack37`` (37 joints)
 
-For MANO/FLAME, provide joints in the model-native order and keep ``joint_layout=None``.
+For MANO/FLAME, provide joints in model-native order and keep ``joint_layout=None``.
+For SMPLH/SMPLX full-body+hands+face fitting, prefer dict block input with ``joint_layout=None``.
 
 Confidence handling
 -------------------

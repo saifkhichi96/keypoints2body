@@ -72,6 +72,9 @@ class CameraSpaceFitter:
         elif joints_category == "AMASS":
             self.smpl_index = AMASS_SMPL_IDX
             self.corr_index = AMASS_IDX
+        elif joints_category == "GENERIC":
+            self.smpl_index = None
+            self.corr_index = None
         else:
             raise ValueError("No such joints category!")
 
@@ -81,6 +84,7 @@ class CameraSpaceFitter:
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor] = None,
         seq_ind: int = 0,
+        target_model_indices: Optional[torch.Tensor] = None,
         joint_loss_weight: float = 600.0,
         pose_preserve_weight: float = 5.0,
         freeze_betas: bool = True,
@@ -111,9 +115,18 @@ class CameraSpaceFitter:
             global_orient=global_orient, body_pose=body_pose, betas=betas
         )
         model_joints = smpl_output.joints
+        if target_model_indices is not None:
+            target_model_indices = target_model_indices.to(
+                device=model_joints.device, dtype=torch.long
+            )
 
         if init_cam_t is None:
-            init_cam_t = guess_init_3d(model_joints, j3d, self.joints_category).detach()
+            if target_model_indices is None:
+                init_cam_t = guess_init_3d(model_joints, j3d, self.joints_category).detach()
+            else:
+                model_root = model_joints[:, target_model_indices[0], :]
+                target_root = j3d[:, 0, :]
+                init_cam_t = (target_root - model_root).detach()
         else:
             init_cam_t = init_cam_t.detach().clone()
         camera_translation = init_cam_t.clone()
@@ -140,13 +153,17 @@ class CameraSpaceFitter:
                     global_orient=global_orient, body_pose=body_pose, betas=betas
                 )
                 model_joints = smpl_output.joints
-                loss = camera_fitting_loss_3d(
-                    model_joints[:, self.smpl_index],
-                    camera_translation,
-                    init_cam_t,
-                    j3d[:, self.corr_index],
-                    self.joints_category,
-                )
+                if target_model_indices is None:
+                    loss = camera_fitting_loss_3d(
+                        model_joints[:, self.smpl_index],
+                        camera_translation,
+                        init_cam_t,
+                        j3d[:, self.corr_index],
+                        self.joints_category,
+                    )
+                else:
+                    loss = ((model_joints[:, target_model_indices] + camera_translation - j3d) ** 2).sum()
+                    loss = loss + ((camera_translation - init_cam_t) ** 2).sum() * (100.0**2)
                 loss.backward()
                 return loss
 
@@ -160,13 +177,17 @@ class CameraSpaceFitter:
                     global_orient=global_orient, body_pose=body_pose, betas=betas
                 )
                 model_joints = smpl_output.joints
-                loss = camera_fitting_loss_3d(
-                    model_joints[:, self.smpl_index],
-                    camera_translation,
-                    init_cam_t,
-                    j3d[:, self.corr_index],
-                    self.joints_category,
-                )
+                if target_model_indices is None:
+                    loss = camera_fitting_loss_3d(
+                        model_joints[:, self.smpl_index],
+                        camera_translation,
+                        init_cam_t,
+                        j3d[:, self.corr_index],
+                        self.joints_category,
+                    )
+                else:
+                    loss = ((model_joints[:, target_model_indices] + camera_translation - j3d) ** 2).sum()
+                    loss = loss + ((camera_translation - init_cam_t) ** 2).sum() * (100.0**2)
                 camera_optimizer.zero_grad()
                 loss.backward()
                 camera_optimizer.step()
@@ -199,14 +220,22 @@ class CameraSpaceFitter:
                     global_orient=global_orient, body_pose=body_pose, betas=betas
                 )
                 model_joints = smpl_output.joints
+                if target_model_indices is None:
+                    model_joints_fit = model_joints[:, self.smpl_index]
+                    target_j3d = j3d[:, self.corr_index]
+                    conf_fit = conf_3d
+                else:
+                    model_joints_fit = model_joints[:, target_model_indices]
+                    target_j3d = j3d
+                    conf_fit = conf_3d
                 loss = body_fitting_loss_3d(
                     body_pose,
                     preserve_pose,
                     betas,
-                    model_joints[:, self.smpl_index],
-                    j3d[:, self.corr_index],
+                    model_joints_fit,
+                    target_j3d,
                     self.pose_prior,
-                    joints3d_conf=conf_3d,
+                    joints3d_conf=conf_fit,
                     camera_translation=camera_translation,
                     joint_loss_weight=joint_loss_weight,
                     pose_preserve_weight=pose_preserve_weight,
@@ -224,14 +253,22 @@ class CameraSpaceFitter:
                     global_orient=global_orient, body_pose=body_pose, betas=betas
                 )
                 model_joints = smpl_output.joints
+                if target_model_indices is None:
+                    model_joints_fit = model_joints[:, self.smpl_index]
+                    target_j3d = j3d[:, self.corr_index]
+                    conf_fit = conf_3d
+                else:
+                    model_joints_fit = model_joints[:, target_model_indices]
+                    target_j3d = j3d
+                    conf_fit = conf_3d
                 loss = body_fitting_loss_3d(
                     body_pose,
                     preserve_pose,
                     betas,
-                    model_joints[:, self.smpl_index],
-                    j3d[:, self.corr_index],
+                    model_joints_fit,
+                    target_j3d,
                     self.pose_prior,
-                    joints3d_conf=conf_3d,
+                    joints3d_conf=conf_fit,
                     camera_translation=camera_translation,
                     joint_loss_weight=joint_loss_weight,
                     pose_preserve_weight=pose_preserve_weight,
@@ -248,14 +285,22 @@ class CameraSpaceFitter:
                 return_full_pose=False,
             )
             model_joints = smpl_output.joints
+            if target_model_indices is None:
+                model_joints_fit = model_joints[:, self.smpl_index]
+                target_j3d = j3d[:, self.corr_index]
+                conf_fit = conf_3d
+            else:
+                model_joints_fit = model_joints[:, target_model_indices]
+                target_j3d = j3d
+                conf_fit = conf_3d
             final_loss = body_fitting_loss_3d(
                 body_pose,
                 preserve_pose,
                 betas,
-                model_joints[:, self.smpl_index],
-                j3d[:, self.corr_index],
+                model_joints_fit,
+                target_j3d,
                 self.pose_prior,
-                joints3d_conf=conf_3d,
+                joints3d_conf=conf_fit,
                 camera_translation=camera_translation,
                 joint_loss_weight=600.0,
             )

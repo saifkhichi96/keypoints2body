@@ -16,14 +16,20 @@ from ..core.engine import (
     default_init_params_for_model,
     load_mean_pose_shape,
     optimize_shape_pass,
+    upgrade_smpl_family_init_params,
 )
-from ..core.joints.adapters import adapt_layout_and_conf, normalize_joints_sequence
+from ..core.joints.adapters import (
+    adapt_layout_and_conf,
+    normalize_sequence_observations,
+)
 from ..models.smpl_data import (
     BodyModelFitResult,
     BodyModelParams,
     FLAMEData,
     MANOData,
     SMPLData,
+    SMPLHData,
+    SMPLXData,
 )
 from .model_factory import load_body_model
 
@@ -44,7 +50,9 @@ def optimize_params_sequence(
     """Optimize body parameters for a full motion sequence.
 
     Args:
-        joints_seq: Sequence keypoints with shape ``(T,K,3)`` or ``(T,K,4)``.
+        joints_seq: Sequence keypoints as either:
+            - array/tensor with shape ``(T,K,3)`` or ``(T,K,4)``, or
+            - dict blocks where each value is ``(T,K,3)`` or ``(T,K,4)``.
         init_params: Optional initial parameters for frame 0.
         body_model: Body model backend. Recognized values are ``smpl``, ``smplh``,
             ``smplx``, ``mano``, and ``flame``.
@@ -81,8 +89,10 @@ def optimize_params_sequence(
         )
     if body_model not in OPTIMIZATION_BODY_MODELS:
         raise ValueError(f"Unsupported body_model: {body_model}")
-    xyz, conf = normalize_joints_sequence(joints_seq)
-    if body_model in {"smpl", "smplh", "smplx"}:
+    xyz, conf, model_indices, in_layout = normalize_sequence_observations(
+        joints_seq, layout=joint_layout, body_model=body_model
+    )
+    if body_model in {"smpl", "smplh", "smplx"} and in_layout != "GENERIC":
         xyz_np, conf_np, out_layout = adapt_layout_and_conf(
             xyz.cpu().numpy(), conf.cpu().numpy(), joint_layout
         )
@@ -91,8 +101,9 @@ def optimize_params_sequence(
         if out_layout not in ("SMPL24", "AMASS"):
             raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
         seq_cfg.frame.joints_category = out_layout
+        model_indices = None
     else:
-        if joint_layout is not None:
+        if joint_layout is not None and in_layout != "GENERIC":
             raise ValueError(
                 "joint_layout adapters are currently defined for SMPL-family body "
                 "layouts only. Use raw MANO/FLAME joint order with joint_layout=None."
@@ -100,6 +111,8 @@ def optimize_params_sequence(
         xyz = xyz.to(device)
         conf = conf.to(device)
         seq_cfg.frame.joints_category = "GENERIC"
+        if model_indices is not None:
+            model_indices = model_indices.to(device=device, dtype=torch.long)
 
     if seq_cfg.limit_frames is not None and seq_cfg.limit_frames > 0:
         xyz = xyz[: seq_cfg.limit_frames]
@@ -117,15 +130,18 @@ def optimize_params_sequence(
 
     if body_model in {"smpl", "smplh", "smplx"}:
         init_mean_pose, init_mean_shape = load_mean_pose_shape(DEFAULT_MEAN_FILE, device)
-        betas_opt = optimize_shape_pass(
-            model=model,
-            seq_config=seq_cfg,
-            init_mean_shape=init_mean_shape,
-            init_mean_pose=init_mean_pose,
-            data_tensor=xyz,
-            confidence_input=conf[0],
-            device=device,
-        )
+        if seq_cfg.frame.joints_category != "GENERIC":
+            betas_opt = optimize_shape_pass(
+                model=model,
+                seq_config=seq_cfg,
+                init_mean_shape=init_mean_shape,
+                init_mean_pose=init_mean_pose,
+                data_tensor=xyz,
+                confidence_input=conf[0],
+                device=device,
+            )
+        else:
+            betas_opt = init_mean_shape
     else:
         init_mean_pose = None
         init_mean_shape = None
@@ -141,13 +157,19 @@ def optimize_params_sequence(
 
     if init_params is None:
         if body_model in {"smpl", "smplh", "smplx"}:
-            prev = default_init_params(
+            base_init = default_init_params(
                 init_mean_pose,
                 betas_opt,
                 xyz[0:1],
                 model,
                 joints_category=seq_cfg.frame.joints_category,
                 coordinate_mode=seq_cfg.frame.coordinate_mode,
+            )
+            prev = upgrade_smpl_family_init_params(
+                base_init,
+                model_type=body_model,
+                model=model,
+                device=device,
             )
         else:
             prev = default_init_params_for_model(
@@ -160,8 +182,8 @@ def optimize_params_sequence(
     else:
         expected_type = {
             "smpl": SMPLData,
-            "smplh": SMPLData,
-            "smplx": SMPLData,
+            "smplh": SMPLHData,
+            "smplx": SMPLXData,
             "mano": MANOData,
             "flame": FLAMEData,
         }[body_model]
@@ -179,6 +201,7 @@ def optimize_params_sequence(
             if body_model in {"mano", "flame"}:
                 prev.transl = frame[:, 0, :].detach()
             else:
+                prev_before = prev
                 pose = (
                     prev.pose
                     if isinstance(prev.pose, torch.Tensor)
@@ -203,9 +226,37 @@ def optimize_params_sequence(
                     ).transl,
                     metadata=dict(getattr(prev, "metadata", {})),
                 )
+                if isinstance(prev_before, SMPLHData):
+                    prev = SMPLHData(
+                        betas=prev.betas,
+                        global_orient=prev.global_orient,
+                        body_pose=prev.body_pose,
+                        transl=prev.transl,
+                        metadata=prev.metadata,
+                        left_hand_pose=prev_before.left_hand_pose,
+                        right_hand_pose=prev_before.right_hand_pose,
+                    )
+                if isinstance(prev_before, SMPLXData):
+                    prev = SMPLXData(
+                        betas=prev.betas,
+                        global_orient=prev.global_orient,
+                        body_pose=prev.body_pose,
+                        transl=prev.transl,
+                        metadata=prev.metadata,
+                        left_hand_pose=prev_before.left_hand_pose,
+                        right_hand_pose=prev_before.right_hand_pose,
+                        expression=prev_before.expression,
+                        jaw_pose=prev_before.jaw_pose,
+                        leye_pose=prev_before.leye_pose,
+                        reye_pose=prev_before.reye_pose,
+                    )
 
         res = engine.fit_frame(
-            init_params=prev, j3d=frame, conf_3d=frame_conf, seq_ind=idx
+            init_params=prev,
+            j3d=frame,
+            conf_3d=frame_conf,
+            seq_ind=idx,
+            target_model_indices=model_indices,
         )
         results.append(res)
         if seq_cfg.use_previous_frame_init:

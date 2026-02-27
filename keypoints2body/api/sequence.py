@@ -1,0 +1,193 @@
+from __future__ import annotations
+
+from typing import Optional
+
+import torch
+
+from ..core.config import BodyModelConfig, FrameOptimizeConfig, SequenceOptimizeConfig
+from ..core.engine import (
+    OptimizeEngine,
+    default_init_params,
+    load_mean_pose_shape,
+    optimize_shape_pass,
+)
+from ..core.joints.adapters import adapt_layout_and_conf, normalize_joints_sequence
+from ..models.smpl_data import BodyModelFitResult, BodyModelParams, SMPLData
+from .model_factory import load_body_model
+
+DEFAULT_MEAN_FILE = "./data/models/neutral_smpl_mean_params.h5"
+
+
+def optimize_params_sequence(
+    joints_seq,
+    *,
+    init_params: Optional[BodyModelParams] = None,
+    body_model: str = "smpl",
+    joint_layout: Optional[str] = None,
+    model=None,
+    config: Optional[SequenceOptimizeConfig | dict] = None,
+    device=None,
+) -> list[BodyModelFitResult]:
+    """Optimize body parameters for a full motion sequence.
+
+    Args:
+        joints_seq: Sequence keypoints with shape ``(T,K,3)`` or ``(T,K,4)``.
+        init_params: Optional initial parameters for frame 0.
+        body_model: Body model type (for example ``"smpl"``).
+        joint_layout: Optional explicit layout label for adapter selection.
+        model: Optional preloaded body model instance.
+        config: Optional sequence config or dict equivalent.
+        device: Optional torch device specifier.
+
+    Returns:
+        Per-frame optimization results in temporal order.
+    """
+    device = torch.device(device) if device is not None else torch.device("cpu")
+
+    if isinstance(config, dict):
+        frame_cfg = FrameOptimizeConfig(**config.get("frame", {}))
+        seq_cfg = SequenceOptimizeConfig(
+            frame=frame_cfg,
+            num_shape_iters=config.get("num_shape_iters", 40),
+            num_shape_frames=config.get("num_shape_frames", 50),
+            use_shape_optimization=config.get("use_shape_optimization", True),
+            use_previous_frame_init=config.get("use_previous_frame_init", True),
+            fix_foot=config.get("fix_foot", False),
+            limit_frames=config.get("limit_frames", None),
+        )
+    elif isinstance(config, SequenceOptimizeConfig):
+        seq_cfg = config
+    else:
+        seq_cfg = SequenceOptimizeConfig()
+
+    if seq_cfg.frame.input_type != "joints3d":
+        raise NotImplementedError(
+            f"input_type='{seq_cfg.frame.input_type}' is not implemented in this release. "
+            "Current APIs support only joints3d."
+        )
+
+    xyz, conf = normalize_joints_sequence(joints_seq)
+    xyz_np, conf_np, out_layout = adapt_layout_and_conf(
+        xyz.cpu().numpy(), conf.cpu().numpy(), joint_layout
+    )
+    xyz = torch.as_tensor(xyz_np, dtype=torch.float32, device=device)
+    conf = torch.as_tensor(conf_np, dtype=torch.float32, device=device)
+
+    if out_layout not in ("orig", "AMASS"):
+        raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
+    seq_cfg.frame.joints_category = out_layout
+
+    if seq_cfg.limit_frames is not None and seq_cfg.limit_frames > 0:
+        xyz = xyz[: seq_cfg.limit_frames]
+        conf = conf[: seq_cfg.limit_frames]
+
+    if seq_cfg.fix_foot and xyz.shape[1] > 11:
+        conf[:, 7] = 1.5
+        conf[:, 8] = 1.5
+        conf[:, 10] = 1.5
+        conf[:, 11] = 1.5
+
+    if model is None:
+        body_cfg = BodyModelConfig(model_type=body_model)
+        model = load_body_model(body_cfg, device)
+
+    init_mean_pose, init_mean_shape = load_mean_pose_shape(DEFAULT_MEAN_FILE, device)
+    betas_opt = optimize_shape_pass(
+        model=model,
+        seq_config=seq_cfg,
+        init_mean_shape=init_mean_shape,
+        init_mean_pose=init_mean_pose,
+        data_tensor=xyz,
+        confidence_input=conf[0],
+        device=device,
+    )
+
+    engine = OptimizeEngine(model=model, frame_config=seq_cfg.frame, device=device)
+    results: list[BodyModelFitResult] = []
+
+    if init_params is None:
+        prev = default_init_params(
+            init_mean_pose,
+            betas_opt,
+            xyz[0:1],
+            model,
+            joints_category=seq_cfg.frame.joints_category,
+            coordinate_mode=seq_cfg.frame.coordinate_mode,
+        )
+    else:
+        prev = init_params.to(device)
+
+    for idx in range(xyz.shape[0]):
+        frame = xyz[idx : idx + 1]
+        frame_conf = conf[idx]
+
+        if seq_cfg.frame.coordinate_mode == "world" and prev.transl is None:
+            pose = (
+                prev.pose
+                if isinstance(prev.pose, torch.Tensor)
+                else torch.as_tensor(prev.pose, dtype=torch.float32, device=device)
+            )
+            betas = (
+                prev.betas
+                if isinstance(prev.betas, torch.Tensor)
+                else torch.as_tensor(prev.betas, dtype=torch.float32, device=device)
+            )
+            prev = SMPLData(
+                betas=betas,
+                global_orient=pose[:, :3],
+                body_pose=pose[:, 3:],
+                transl=default_init_params(
+                    pose,
+                    betas,
+                    frame,
+                    model,
+                    seq_cfg.frame.joints_category,
+                    seq_cfg.frame.coordinate_mode,
+                ).transl,
+                metadata=dict(getattr(prev, "metadata", {})),
+            )
+
+        res = engine.fit_frame(
+            init_params=prev, j3d=frame, conf_3d=frame_conf, seq_ind=idx
+        )
+        results.append(res)
+        if seq_cfg.use_previous_frame_init:
+            prev = res.params
+
+    return results
+
+
+def optimize_shape_sequence(
+    joints_seq,
+    *,
+    body_model: str = "smpl",
+    joint_layout: Optional[str] = None,
+    model=None,
+    config: Optional[SequenceOptimizeConfig | dict] = None,
+    device=None,
+) -> BodyModelParams:
+    """Run sequence optimization and return the final frame parameters.
+
+    Args:
+        joints_seq: Sequence keypoints input.
+        body_model: Body model type.
+        joint_layout: Optional explicit layout label.
+        model: Optional preloaded body model instance.
+        config: Optional sequence config.
+        device: Optional torch device specifier.
+
+    Returns:
+        Parameter object from the last optimized frame.
+    """
+    results = optimize_params_sequence(
+        joints_seq,
+        init_params=None,
+        body_model=body_model,
+        joint_layout=joint_layout,
+        model=model,
+        config=config,
+        device=device,
+    )
+    if not results:
+        raise ValueError("No frames were optimized")
+    return results[-1].params

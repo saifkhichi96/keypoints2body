@@ -1,76 +1,49 @@
-# joints2smpl
-Fit SMPL models to 3D joints and render the resulting meshes.
+![keypoints2body header](docs/assets/header.svg)
 
-![SMPL Fitting Pipeline](docs/overview.png)
+# keypoints2body
 
-## Prerequisites
-- Tested on Ubuntu 24.04 with CUDA 12.6 and Python 3.10.
-- SMPL model files (neutral/female/male) are required.
+`keypoints2body` is a Python library for optimizing SMPL-family body model parameters
+from 3D joints for both single frames and motion sequences.
 
-## Installation
-Create and activate the conda environment:
+## Install
+
 ```bash
-conda env create -f environment.yaml
-conda activate fit3d
+pip install -e .
 ```
 
-## Download SMPL models
-Download SMPL [Male, Female](https://smpl.is.tue.mpg.de/) and [Neutral](https://smplify.is.tue.mpg.de/) body models and place them under `<repo>/data/models/body_models/smpl/` so the layout is:
+## Quick usage
+
+```python
+import numpy as np
+from keypoints2body import optimize_params_frame
+
+joints = np.zeros((22, 3), dtype=np.float32)
+result = optimize_params_frame(joints, joint_layout="AMASS")
 ```
-<repo>
-└── data/models/body_models/smpl/
-    ├── SMPL_FEMALE.pkl
-    ├── SMPL_MALE.pkl
-    └── SMPL_NEUTRAL.pkl
-```
 
-## Usage
+## Documentation
 
-The main workflow, described in detail in the [technical report](docs/smpl_fit_tech_notes.md), consists of two scripts: fitting SMPL to 3D joints and rendering the fitted meshes.
+Full documentation lives under [`docs/`](docs/) and is intended for Sphinx.
 
-### 1) Fit SMPL to a joints sequence
-`smpl_fit.py` optimizes SMPL parameters for each frame of a `.npy` joints sequence.
+Suggested starting points:
+
+- [Getting started](docs/getting_started.rst)
+- [Library usage](docs/usage.rst)
+- [CLI reference](docs/cli.rst)
+- [Architecture](docs/architecture.rst)
+- [API reference](docs/api.rst)
+- [Contributor guide](docs/contributing.rst)
+
+## CLI
+
 ```bash
-python smpl_fit.py \
-  --file ./data/demo/test_motion1.npy \
-  --work-dir ./work_dirs \
-  --joint-category AMASS \
-  --num-smplify-iters 100
+keypoints2body-fit-frame --help
+keypoints2body-fit-seq --help
+keypoints2body-eval --help
 ```
-Key arguments:
-- `--file`: Full path of the input `.npy` file containing a sequence of 3D joints (N x J x 3).
-- `--work-dir`: Where per-frame `.pkl` results are written.
-- `--cuda/--cpu`, `--gpu-id`: Control device selection.
-- `--num-smplify-iters`, `--fix-foot`: Tuning knobs for optimization.
 
-Output layout under `<work-dir>/<sequence-name>/<timestamp>/`:
-- One `.pkl` per frame containing:
-  - `pose`: (1, 72) SMPL pose (global orient + body pose) in axis-angle.
-  - `beta`: (1, 10) SMPL shape coefficients.
-  - `cam`: (1, 3) translation vector.
-  - `root`: (3,) root joint position from input joints (for reference).
+Project script:
 
-## Demo
-Run the end-to-end demo with the provided sample:
 ```bash
-python smpl_fit.py --data-folder ./data/demo --file test_motion1.npy --work-dir ./work_dirs
+python smpl_fit.py --help
 ```
-
-## Citation
-If you find this project useful for your research, please consider citing:
-```
-@article{zuo2021sparsefusion,
-  title={Sparsefusion: Dynamic human avatar modeling from sparse rgbd images},
-  author={Zuo, Xinxin and Wang, Sen and Zheng, Jiangbin and Yu, Weiwei and Gong, Minglun and Yang, Ruigang and Cheng, Li},
-  journal={IEEE Transactions on Multimedia},
-  volume={23},
-  pages={1617--1629},
-  year={2021}
-}
-```
-
-## References
-We indicate if a function or script is borrowed externally inside each file. Here are some great resources we benefit from:
-- Shape/Pose prior and some functions are borrowed from [VIBE](https://github.com/mkocabas/VIBE).
-- SMPL models and layer is from [SMPL-X model](https://github.com/vchoutas/smplx).
-- Some functions are borrowed from [HMR-pytorch](https://github.com/MandyMo/pytorch_HMR).

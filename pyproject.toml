@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keypoints2body"
+version = "0.1.0"
+description = "SMPL/SMPLH/SMPLX optimization library for single frames and sequences"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "keypoints2body contributors" }
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy",
+  "torch",
+  "smplx",
+  "h5py",
+  "tqdm",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "mypy"]
+docs = ["sphinx>=7", "furo>=2024.8.6", "sphinxcontrib-mermaid>=0.9"]
+eval = []
+render = []
+
+[project.scripts]
+keypoints2body-fit-frame = "keypoints2body.cli.fit_frame:main"
+keypoints2body-fit-seq = "keypoints2body.cli.fit_seq:main"
+keypoints2body-eval = "keypoints2body.cli.eval:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["keypoints2body*"]
+exclude = ["tests*", "data*", "src*"]

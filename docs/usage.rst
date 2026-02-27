@@ -33,6 +33,8 @@ Returned ``result.params`` type depends on model:
 - ``MANOData`` for MANO
 - ``FLAMEData`` for FLAME
 
+For parameter details, see :doc:`body_models`.
+
 Frame Optimization
 ------------------
 

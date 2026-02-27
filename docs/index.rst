@@ -20,6 +20,7 @@ Version stability note:
 
    getting_started
    usage
+   body_models
    cli
    architecture
    contributing

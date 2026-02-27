@@ -30,6 +30,8 @@ Current estimator coverage:
 
 - Optimization estimator (frame/sequence APIs): ``smpl``, ``smplh``, ``smplx``, ``mano``, ``flame``
 
+For a model-by-model parameter overview, see :doc:`body_models`.
+
 Required model assets
 ---------------------
 

@@ -122,7 +122,9 @@ class CameraSpaceFitter:
 
         if init_cam_t is None:
             if target_model_indices is None:
-                init_cam_t = guess_init_3d(model_joints, j3d, self.joints_category).detach()
+                init_cam_t = guess_init_3d(
+                    model_joints, j3d, self.joints_category
+                ).detach()
             else:
                 model_root = model_joints[:, target_model_indices[0], :]
                 target_root = j3d[:, 0, :]
@@ -162,8 +164,17 @@ class CameraSpaceFitter:
                         self.joints_category,
                     )
                 else:
-                    loss = ((model_joints[:, target_model_indices] + camera_translation - j3d) ** 2).sum()
-                    loss = loss + ((camera_translation - init_cam_t) ** 2).sum() * (100.0**2)
+                    loss = (
+                        (
+                            model_joints[:, target_model_indices]
+                            + camera_translation
+                            - j3d
+                        )
+                        ** 2
+                    ).sum()
+                    loss = loss + ((camera_translation - init_cam_t) ** 2).sum() * (
+                        100.0**2
+                    )
                 loss.backward()
                 return loss
 
@@ -186,8 +197,17 @@ class CameraSpaceFitter:
                         self.joints_category,
                     )
                 else:
-                    loss = ((model_joints[:, target_model_indices] + camera_translation - j3d) ** 2).sum()
-                    loss = loss + ((camera_translation - init_cam_t) ** 2).sum() * (100.0**2)
+                    loss = (
+                        (
+                            model_joints[:, target_model_indices]
+                            + camera_translation
+                            - j3d
+                        )
+                        ** 2
+                    ).sum()
+                    loss = loss + ((camera_translation - init_cam_t) ** 2).sum() * (
+                        100.0**2
+                    )
                 camera_optimizer.zero_grad()
                 loss.backward()
                 camera_optimizer.step()

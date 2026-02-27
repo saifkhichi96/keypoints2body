@@ -100,7 +100,9 @@ def optimize_params_sequence(
         xyz = torch.as_tensor(xyz_np, dtype=torch.float32, device=device)
         conf = torch.as_tensor(conf_np, dtype=torch.float32, device=device)
         if out_layout not in ("SMPL24", "AMASS"):
-            raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
+            raise ValueError(
+                f"Unsupported output layout after adaptation: {out_layout}"
+            )
         seq_cfg.frame.joints_category = out_layout
         model_indices = None
     else:
@@ -134,7 +136,9 @@ def optimize_params_sequence(
         init_mean_shape = None
         betas_opt = None
     elif body_model in {"smpl", "smplh", "smplx"}:
-        init_mean_pose, init_mean_shape = load_mean_pose_shape(DEFAULT_MEAN_FILE, device)
+        init_mean_pose, init_mean_shape = load_mean_pose_shape(
+            DEFAULT_MEAN_FILE, device
+        )
         if seq_cfg.frame.joints_category != "GENERIC":
             betas_opt = optimize_shape_pass(
                 model=model,
@@ -166,7 +170,9 @@ def optimize_params_sequence(
                 betas=torch.zeros((1, 10), dtype=torch.float32, device=device),
                 global_orient=torch.zeros((1, 3), dtype=torch.float32, device=device),
                 body_pose=torch.zeros((1, 69), dtype=torch.float32, device=device),
-                transl=xyz[0:1, 0, :].detach() if seq_cfg.frame.coordinate_mode == "world" else None,
+                transl=xyz[0:1, 0, :].detach()
+                if seq_cfg.frame.coordinate_mode == "world"
+                else None,
             )
         elif body_model in {"smpl", "smplh", "smplx"}:
             base_init = default_init_params(

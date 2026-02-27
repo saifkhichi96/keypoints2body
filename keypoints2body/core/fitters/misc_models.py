@@ -57,7 +57,9 @@ class MANOFitter:
         elif conf_3d.dim() == 2:
             conf_3d = conf_3d[0]
         if target_model_indices is not None:
-            target_model_indices = target_model_indices.to(device=device, dtype=torch.long)
+            target_model_indices = target_model_indices.to(
+                device=device, dtype=torch.long
+            )
 
         global_orient = init_params.global_orient.clone().detach().to(device)
         hand_pose = init_params.hand_pose.clone().detach().to(device)
@@ -103,9 +105,11 @@ class MANOFitter:
             )
             loss = loss + 1e-2 * (hand_pose**2).sum() + 5.0 * (betas**2).sum()
             if seq_ind > 0:
-                loss = loss + (pose_preserve_weight**2) * (
-                    (hand_pose - preserve_pose) ** 2
-                ).sum()
+                loss = (
+                    loss
+                    + (pose_preserve_weight**2)
+                    * ((hand_pose - preserve_pose) ** 2).sum()
+                )
             return loss
 
         if self.use_lbfgs:
@@ -202,7 +206,9 @@ class FLAMEFitter:
         elif conf_3d.dim() == 2:
             conf_3d = conf_3d[0]
         if target_model_indices is not None:
-            target_model_indices = target_model_indices.to(device=device, dtype=torch.long)
+            target_model_indices = target_model_indices.to(
+                device=device, dtype=torch.long
+            )
 
         def _clone_opt(x: Optional[torch.Tensor], dim: int) -> torch.Tensor:
             if x is None:

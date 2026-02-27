@@ -113,7 +113,9 @@ class RotationRegressionWrapper(nn.Module):
         pred = self.model(inputs)
 
         if self.output_format != OutputFormat.ROT6:
-            raise NotImplementedError(f"Unsupported output format: {self.output_format}")
+            raise NotImplementedError(
+                f"Unsupported output format: {self.output_format}"
+            )
 
         a1_pred = pred[:, :, :3]
         a2_pred = pred[:, :, 3:]
@@ -170,7 +172,9 @@ def create_rotation_regressor(cfg: IKGATConfig) -> RotationRegressionWrapper:
             "num_heads": cfg.num_heads,
         }
     )
-    return RotationRegressionWrapper(model_path=model_path, parent_ids=cfg.parent_ids, **model_cfg)
+    return RotationRegressionWrapper(
+        model_path=model_path, parent_ids=cfg.parent_ids, **model_cfg
+    )
 
 
 class IKGATEstimator:
@@ -217,4 +221,6 @@ class IKGATEstimator:
 
         joints = j3d.detach()
         vertices = j3d.detach()
-        return BodyModelFitResult(params=params, joints=joints, vertices=vertices, loss=None)
+        return BodyModelFitResult(
+            params=params, joints=joints, vertices=vertices, loss=None
+        )

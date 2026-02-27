@@ -138,7 +138,9 @@ def default_init_params_for_model(
     """Create model-aware zero initialization for non-SMPL-family fitters."""
     batch = joints_frame.shape[0]
     num_betas = int(getattr(model, "num_betas", 10))
-    transl = joints_frame[:, 0, :].clone().detach() if coordinate_mode == "world" else None
+    transl = (
+        joints_frame[:, 0, :].clone().detach() if coordinate_mode == "world" else None
+    )
 
     if model_type == "mano":
         num_hand_joints = int(getattr(model, "NUM_HAND_JOINTS", 15))
@@ -181,8 +183,12 @@ def upgrade_smpl_family_init_params(
             global_orient=base_params.global_orient,
             body_pose=base_params.body_pose,
             transl=base_params.transl,
-            left_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
-            right_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
+            left_hand_pose=torch.zeros(
+                (base_params.body_pose.shape[0], hand_dim), device=device
+            ),
+            right_hand_pose=torch.zeros(
+                (base_params.body_pose.shape[0], hand_dim), device=device
+            ),
         )
     if model_type == "smplx":
         hand_dim = int(getattr(model, "NUM_HAND_JOINTS", 15)) * 3
@@ -192,9 +198,15 @@ def upgrade_smpl_family_init_params(
             global_orient=base_params.global_orient,
             body_pose=base_params.body_pose,
             transl=base_params.transl,
-            left_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
-            right_hand_pose=torch.zeros((base_params.body_pose.shape[0], hand_dim), device=device),
-            expression=torch.zeros((base_params.body_pose.shape[0], expr_dim), device=device),
+            left_hand_pose=torch.zeros(
+                (base_params.body_pose.shape[0], hand_dim), device=device
+            ),
+            right_hand_pose=torch.zeros(
+                (base_params.body_pose.shape[0], hand_dim), device=device
+            ),
+            expression=torch.zeros(
+                (base_params.body_pose.shape[0], expr_dim), device=device
+            ),
             jaw_pose=torch.zeros((base_params.body_pose.shape[0], 3), device=device),
             leye_pose=torch.zeros((base_params.body_pose.shape[0], 3), device=device),
             reye_pose=torch.zeros((base_params.body_pose.shape[0], 3), device=device),

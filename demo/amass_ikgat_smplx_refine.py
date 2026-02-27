@@ -129,12 +129,16 @@ def parse_args() -> argparse.Namespace:
         description="AMASS -> IK-GAT estimate -> short SMPL-X optimization refine demo"
     )
     parser.add_argument("--amass-file", type=Path, required=True)
-    parser.add_argument("--out", type=Path, default=Path("./demo_out_smplx_refined.npz"))
+    parser.add_argument(
+        "--out", type=Path, default=Path("./demo_out_smplx_refined.npz")
+    )
     parser.add_argument("--limit-frames", type=int, default=-1)
     parser.add_argument("--opt-steps", type=int, default=5)
     parser.add_argument("--model-format", type=str, default="smplx")
     parser.add_argument("--model-type", type=str, default="pos_to_rot6")
-    parser.add_argument("--estimators-dir", type=Path, default=Path("./data/estimators"))
+    parser.add_argument(
+        "--estimators-dir", type=Path, default=Path("./data/estimators")
+    )
     parser.add_argument("--device", type=str, default=None)
     parser.add_argument("--use-adam", action="store_true")
     return parser.parse_args()

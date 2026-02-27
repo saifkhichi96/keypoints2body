@@ -288,11 +288,15 @@ def normalize_frame_observations(
         points_parts.append(fc_pts)
         conf_parts.append(fc_conf)
         idx_parts.append(
-            torch.arange(SMPLX_FACE_IDX_START, SMPLX_FACE_IDX_START + fc_k, dtype=torch.long)
+            torch.arange(
+                SMPLX_FACE_IDX_START, SMPLX_FACE_IDX_START + fc_k, dtype=torch.long
+            )
         )
 
     if not points_parts:
-        raise ValueError("dict input must provide at least one of: body, left_hand, right_hand, face")
+        raise ValueError(
+            "dict input must provide at least one of: body, left_hand, right_hand, face"
+        )
 
     j3d = torch.cat(points_parts, dim=1)
     conf = torch.cat(conf_parts, dim=0)
@@ -338,27 +342,37 @@ def normalize_sequence_observations(
                 raise ValueError("body block must have 22 or 24 joints")
         elif key == "left_hand":
             if body_model not in {"smplh", "smplx"}:
-                raise ValueError("left_hand block requires body_model='smplh' or 'smplx'")
+                raise ValueError(
+                    "left_hand block requires body_model='smplh' or 'smplx'"
+                )
             if p.shape[1] != 21:
                 raise ValueError("left_hand block must have 21 joints")
             idx = torch.tensor(list(SMPLX_LEFT_HAND_IDX), dtype=torch.long)
         elif key == "right_hand":
             if body_model not in {"smplh", "smplx"}:
-                raise ValueError("right_hand block requires body_model='smplh' or 'smplx'")
+                raise ValueError(
+                    "right_hand block requires body_model='smplh' or 'smplx'"
+                )
             if p.shape[1] != 21:
                 raise ValueError("right_hand block must have 21 joints")
             idx = torch.tensor(list(SMPLX_RIGHT_HAND_IDX), dtype=torch.long)
         else:
             if body_model != "smplx":
                 raise ValueError("face block requires body_model='smplx'")
-            idx = torch.arange(SMPLX_FACE_IDX_START, SMPLX_FACE_IDX_START + p.shape[1], dtype=torch.long)
+            idx = torch.arange(
+                SMPLX_FACE_IDX_START,
+                SMPLX_FACE_IDX_START + p.shape[1],
+                dtype=torch.long,
+            )
 
         pts_parts.append(p)
         conf_parts.append(c)
         idx_parts.append(idx)
 
     if not pts_parts:
-        raise ValueError("dict input must provide at least one of: body, left_hand, right_hand, face")
+        raise ValueError(
+            "dict input must provide at least one of: body, left_hand, right_hand, face"
+        )
 
     xyz = torch.cat(pts_parts, dim=1)
     conf = torch.cat(conf_parts, dim=1)

@@ -86,7 +86,9 @@ def optimize_params_frame(
         j3d = torch.as_tensor(j_np, dtype=torch.float32, device=device)
         conf_3d = torch.as_tensor(c_np[0], dtype=torch.float32, device=device)
         if out_layout not in ("SMPL24", "AMASS"):
-            raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
+            raise ValueError(
+                f"Unsupported output layout after adaptation: {out_layout}"
+            )
         frame_cfg.joints_category = out_layout
         model_indices = None
     else:
@@ -115,7 +117,9 @@ def optimize_params_frame(
                 betas=torch.zeros((1, 10), dtype=torch.float32, device=device),
                 global_orient=torch.zeros((1, 3), dtype=torch.float32, device=device),
                 body_pose=torch.zeros((1, 69), dtype=torch.float32, device=device),
-                transl=j3d[:, 0, :].detach() if frame_cfg.coordinate_mode == "world" else None,
+                transl=j3d[:, 0, :].detach()
+                if frame_cfg.coordinate_mode == "world"
+                else None,
             )
         elif body_model in {"smpl", "smplh", "smplx"}:
             init_mean_pose, init_mean_shape = load_mean_pose_shape(

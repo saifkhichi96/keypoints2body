@@ -111,7 +111,9 @@ class GATRotationRegressor(nn.Module):
         residual = self.residual_proj(x)
         node_features, edge_index = self.create_batch_graph(h)
 
-        for i, (gat_layer, layer_norm) in enumerate(zip(self.gat_layers, self.layer_norms)):
+        for i, (gat_layer, layer_norm) in enumerate(
+            zip(self.gat_layers, self.layer_norms)
+        ):
             h_prev = node_features
             node_features = gat_layer(node_features, edge_index)
             node_features = F.elu(node_features)

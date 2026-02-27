@@ -135,7 +135,9 @@ class WorldSpaceFitter:
                 left_hand_pose = init_params.left_hand_pose.clone().detach().to(device)
                 left_hand_pose.requires_grad_(True)
             if init_params.right_hand_pose is not None:
-                right_hand_pose = init_params.right_hand_pose.clone().detach().to(device)
+                right_hand_pose = (
+                    init_params.right_hand_pose.clone().detach().to(device)
+                )
                 right_hand_pose.requires_grad_(True)
         if isinstance(init_params, SMPLXData):
             if init_params.expression is not None:
@@ -162,7 +164,9 @@ class WorldSpaceFitter:
             conf_3d = conf_3d[0]
         j3d = j3d.to(device)
         if target_model_indices is not None:
-            target_model_indices = target_model_indices.to(device=device, dtype=torch.long)
+            target_model_indices = target_model_indices.to(
+                device=device, dtype=torch.long
+            )
 
         betas.requires_grad = not freeze_betas
 
@@ -279,8 +283,12 @@ class WorldSpaceFitter:
                     global_orient=global_orient.detach(),
                     body_pose=body_pose.detach(),
                     transl=transl.detach(),
-                    left_hand_pose=left_hand_pose.detach() if left_hand_pose is not None else None,
-                    right_hand_pose=right_hand_pose.detach() if right_hand_pose is not None else None,
+                    left_hand_pose=left_hand_pose.detach()
+                    if left_hand_pose is not None
+                    else None,
+                    right_hand_pose=right_hand_pose.detach()
+                    if right_hand_pose is not None
+                    else None,
                     expression=expression.detach() if expression is not None else None,
                     jaw_pose=jaw_pose.detach() if jaw_pose is not None else None,
                     leye_pose=leye_pose.detach() if leye_pose is not None else None,
@@ -292,8 +300,12 @@ class WorldSpaceFitter:
                     global_orient=global_orient.detach(),
                     body_pose=body_pose.detach(),
                     transl=transl.detach(),
-                    left_hand_pose=left_hand_pose.detach() if left_hand_pose is not None else None,
-                    right_hand_pose=right_hand_pose.detach() if right_hand_pose is not None else None,
+                    left_hand_pose=left_hand_pose.detach()
+                    if left_hand_pose is not None
+                    else None,
+                    right_hand_pose=right_hand_pose.detach()
+                    if right_hand_pose is not None
+                    else None,
                 )
             else:
                 fitted_params = SMPLData(

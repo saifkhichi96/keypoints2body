@@ -23,7 +23,7 @@ def optimize_shape_multi_frame(
     init_betas,
     pose_init,
     j3d_world,
-    joints_category="orig",
+    joints_category="SMPL24",
     num_iters=20,
     step_size=1e-1,
     use_lbfgs=True,
@@ -40,7 +40,7 @@ def optimize_shape_multi_frame(
         init_betas: (1,10) initial shape
         pose_init: (T,72) initial poses (global+body)
         j3d_world: (T,J,3) world 3D joints (dataset layout)
-        joints_category: 'orig' or 'AMASS'
+        joints_category: 'SMPL24' or 'AMASS'
         frame_indices: optional subset of frames to use
     """
     T, J, _ = j3d_world.shape
@@ -51,7 +51,7 @@ def optimize_shape_multi_frame(
     betas = init_betas.clone().detach().to(device)
     betas.requires_grad = True
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         smpl_index = torch.tensor(list(config.smpl_idx), device=device)
         corr_index = torch.tensor(list(config.smpl_idx), device=device)
     elif joints_category == "AMASS":
@@ -82,7 +82,7 @@ def optimize_shape_multi_frame(
             model_joints = smpl_out.joints  # (1, J_smpl, 3)
 
             # Align root per frame by translation to remove global position
-            if joints_category == "orig":
+            if joints_category == "SMPL24":
                 root_idx_smpl = config.JOINT_MAP["MidHip"]
                 root_idx_target = config.JOINT_MAP["MidHip"]
             else:
@@ -129,7 +129,7 @@ def optimize_shape_multi_frame(
 
 
 @torch.no_grad()
-def guess_init_3d(model_joints, j3d, joints_category="orig"):
+def guess_init_3d(model_joints, j3d, joints_category="SMPL24"):
     """Initialize the camera translation via triangle similarity, by using the torso joints        .
     :param model_joints: SMPL model with pre joints
     :param j3d: 25x3 array of Kinect Joints
@@ -139,7 +139,7 @@ def guess_init_3d(model_joints, j3d, joints_category="orig"):
     gt_joints = ["RHip", "LHip", "RShoulder", "LShoulder"]
     gt_joints_ind = [config.JOINT_MAP[joint] for joint in gt_joints]
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         joints_ind_category = [config.JOINT_MAP[joint] for joint in gt_joints]
     elif joints_category == "AMASS":
         joints_ind_category = [config.AMASS_JOINT_MAP[joint] for joint in gt_joints]
@@ -164,7 +164,7 @@ class SMPLify3D:
         batch_size=1,
         num_iters=100,
         use_lbfgs=True,
-        joints_category="orig",
+        joints_category="SMPL24",
         device=torch.device("cuda:0"),
     ):
         # Store options
@@ -186,7 +186,7 @@ class SMPLify3D:
         # select joints_category
         self.joints_category = joints_category
 
-        if joints_category == "orig":
+        if joints_category == "SMPL24":
             self.smpl_index = config.smpl_idx
             self.corr_index = config.smpl_idx
         elif joints_category == "AMASS":

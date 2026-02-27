@@ -13,7 +13,7 @@ from ..prior import MaxMixturePrior
 logger = logging.getLogger(__name__)
 
 
-def guess_init_3d(model_joints, j3d, joints_category="orig"):
+def guess_init_3d(model_joints, j3d, joints_category="SMPL24"):
     """Estimate initial camera translation from torso joints.
 
     Args:
@@ -27,7 +27,7 @@ def guess_init_3d(model_joints, j3d, joints_category="orig"):
     gt_joints = ["RHip", "LHip", "RShoulder", "LShoulder"]
     gt_joints_ind = [JOINT_MAP[joint] for joint in gt_joints]
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         joints_ind_category = [JOINT_MAP[joint] for joint in gt_joints]
     elif joints_category == "AMASS":
         joints_ind_category = [AMASS_JOINT_MAP[joint] for joint in gt_joints]
@@ -50,7 +50,7 @@ class CameraSpaceFitter:
         step_size=1e-2,
         num_iters=100,
         use_lbfgs=True,
-        joints_category="orig",
+        joints_category="SMPL24",
         device=torch.device("cpu"),
         pose_prior_num_gaussians=8,
     ):
@@ -66,7 +66,7 @@ class CameraSpaceFitter:
         self.smpl = smpl_model
         self.joints_category = joints_category
 
-        if joints_category == "orig":
+        if joints_category == "SMPL24":
             self.smpl_index = SMPL_IDX
             self.corr_index = SMPL_IDX
         elif joints_category == "AMASS":

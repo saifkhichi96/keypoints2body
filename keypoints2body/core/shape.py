@@ -13,7 +13,7 @@ def optimize_shape_multi_frame(
     init_betas,
     pose_init,
     j3d_world,
-    joints_category="orig",
+    joints_category="SMPL24",
     num_iters=20,
     step_size=1e-1,
     use_lbfgs=True,
@@ -49,7 +49,7 @@ def optimize_shape_multi_frame(
     betas = init_betas.clone().detach().to(device)
     betas.requires_grad = True
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         smpl_index = torch.tensor(list(SMPL_IDX), device=device)
         corr_index = torch.tensor(list(SMPL_IDX), device=device)
     elif joints_category == "AMASS":
@@ -77,7 +77,7 @@ def optimize_shape_multi_frame(
             )
             model_joints = smpl_out.joints
 
-            if joints_category == "orig":
+            if joints_category == "SMPL24":
                 root_idx_smpl = JOINT_MAP["MidHip"]
                 root_idx_target = JOINT_MAP["MidHip"]
             else:

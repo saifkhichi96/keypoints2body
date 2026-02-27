@@ -25,7 +25,7 @@ class JointLayoutAdapter:
 
 
 ADAPTERS = {
-    "orig": JointLayoutAdapter("orig", 24, "orig"),
+    "SMPL24": JointLayoutAdapter("SMPL24", 24, "SMPL24"),
     "AMASS": JointLayoutAdapter("AMASS", 22, "AMASS"),
     "Manny25": JointLayoutAdapter(
         "Manny25",

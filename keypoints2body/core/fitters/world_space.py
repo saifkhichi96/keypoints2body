@@ -15,7 +15,7 @@ def guess_init_transl_from_root(
     pose_aa,
     betas,
     j3d_world_frame,
-    joints_category="orig",
+    joints_category="SMPL24",
 ):
     """Estimate world translation by aligning root joints.
 
@@ -36,7 +36,7 @@ def guess_init_transl_from_root(
     )
     model_joints = smpl_output.joints
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         root_idx_smpl = JOINT_MAP["MidHip"]
         root_idx_target = JOINT_MAP["MidHip"]
     elif joints_category == "AMASS":
@@ -60,7 +60,7 @@ class WorldSpaceFitter:
         num_iters_first=30,
         num_iters_followup=10,
         use_lbfgs=True,
-        joints_category="orig",
+        joints_category="SMPL24",
         device=torch.device("cpu"),
         pose_prior_num_gaussians=8,
     ):
@@ -72,7 +72,7 @@ class WorldSpaceFitter:
         self.device = device
         self.joints_category = joints_category
 
-        if joints_category == "orig":
+        if joints_category == "SMPL24":
             self.smpl_index = torch.tensor(list(SMPL_IDX), device=device)
             self.corr_index = torch.tensor(list(SMPL_IDX), device=device)
         elif joints_category == "AMASS":

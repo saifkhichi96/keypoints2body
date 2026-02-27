@@ -73,7 +73,7 @@ def optimize_params_sequence(
     xyz = torch.as_tensor(xyz_np, dtype=torch.float32, device=device)
     conf = torch.as_tensor(conf_np, dtype=torch.float32, device=device)
 
-    if out_layout not in ("orig", "AMASS"):
+    if out_layout not in ("SMPL24", "AMASS"):
         raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
     seq_cfg.frame.joints_category = out_layout
 

@@ -59,7 +59,7 @@ def optimize_params_frame(
     j3d = torch.as_tensor(j_np, dtype=torch.float32, device=device)
     conf_3d = torch.as_tensor(c_np[0], dtype=torch.float32, device=device)
 
-    if out_layout not in ("orig", "AMASS"):
+    if out_layout not in ("SMPL24", "AMASS"):
         raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
     frame_cfg.joints_category = out_layout
 

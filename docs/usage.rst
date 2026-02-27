@@ -71,7 +71,7 @@ Joint layout adapters
 The library supports these layouts via adapter registry:
 
 - ``AMASS`` (22 joints)
-- ``orig`` (24 joints)
+- ``SMPL24`` (24 joints)
 - ``Manny25`` (25 joints)
 - ``Halpe26`` (26 joints)
 - ``SpineTrack37`` (37 joints)

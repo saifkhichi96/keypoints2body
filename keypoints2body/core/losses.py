@@ -72,7 +72,7 @@ def camera_fitting_loss_3d(
     camera_t,
     camera_t_est,
     j3d,
-    joints_category="orig",
+    joints_category="SMPL24",
     depth_loss_weight=100.0,
 ) -> torch.Tensor:
     """Compute camera translation fitting loss."""
@@ -81,7 +81,7 @@ def camera_fitting_loss_3d(
     gt_joints = ["RHip", "LHip", "RShoulder", "LShoulder"]
     gt_joints_ind = [JOINT_MAP[joint] for joint in gt_joints]
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         select_joints_ind = [JOINT_MAP[joint] for joint in gt_joints]
     elif joints_category == "AMASS":
         select_joints_ind = [AMASS_JOINT_MAP[joint] for joint in gt_joints]

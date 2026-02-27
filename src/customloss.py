@@ -120,7 +120,7 @@ def camera_fitting_loss_3d(
     camera_t,
     camera_t_est,
     j3d,
-    joints_category="orig",
+    joints_category="SMPL24",
     depth_loss_weight=100.0,
 ) -> torch.Tensor:
     """
@@ -131,7 +131,7 @@ def camera_fitting_loss_3d(
         camera_t: (B, 3) camera translation in model coords
         camera_t_est: (B, 3) estimated camera translation in model coords
         j3d: (B, J, 3) target 3D joints in world coords (mapped to same indices)
-        joints_category: "orig" or "AMASS" joint indexing for j3d
+        joints_category: "SMPL24" or "AMASS" joint indexing for j3d
         depth_loss_weight: weight for depth loss
 
     Returns:
@@ -143,7 +143,7 @@ def camera_fitting_loss_3d(
     gt_joints = ["RHip", "LHip", "RShoulder", "LShoulder"]
     gt_joints_ind = [config.JOINT_MAP[joint] for joint in gt_joints]
 
-    if joints_category == "orig":
+    if joints_category == "SMPL24":
         select_joints_ind = [config.JOINT_MAP[joint] for joint in gt_joints]
     elif joints_category == "AMASS":
         select_joints_ind = [config.AMASS_JOINT_MAP[joint] for joint in gt_joints]

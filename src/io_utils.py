@@ -177,7 +177,7 @@ def load_motion_data(path: Path) -> tuple[np.ndarray, str, int]:
     Returns:
         A tuple of (joints, format, J) where:
             - joints: Joint positions as a NumPy array of shape (T, J, 3).
-            - format: Detected/normalized format label (e.g., "AMASS", "orig").
+            - format: Detected/normalized format label (e.g., "AMASS", "SMPL24").
             - J: Number of joints after any conversion.
 
     Raises:
@@ -215,7 +215,7 @@ def load_motion_data(path: Path) -> tuple[np.ndarray, str, int]:
     if J == 22:
         format = "AMASS"
     elif J == 24:
-        format = "orig"
+        format = "SMPL24"
     elif J == 25:
         warnings.warn("Input has 25 joints; converting from Manny to AMASS.")
         joints = _manny2amass(joints)

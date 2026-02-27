@@ -91,3 +91,22 @@ def camera_fitting_loss_3d(
     j3d_error_loss = (j3d[:, select_joints_ind] - model_joints[:, gt_joints_ind]) ** 2
     depth_loss = (depth_loss_weight**2) * (camera_t - camera_t_est) ** 2
     return (j3d_error_loss + depth_loss).sum()
+
+
+def generic_keypoint_loss_3d(
+    model_joints,
+    j3d,
+    joints3d_conf=None,
+    sigma=100.0,
+    joint_loss_weight=500.0,
+):
+    """Compute robust keypoint fitting loss for generic models."""
+    if joints3d_conf is None:
+        joints3d_conf = torch.ones(model_joints.shape[1], device=model_joints.device)
+    if joints3d_conf.dim() == 1:
+        joints3d_conf = joints3d_conf.view(1, -1)
+
+    joint3d_error = gmof(model_joints - j3d, sigma)
+    joint3d_loss_part = (joints3d_conf**2) * joint3d_error.sum(dim=-1)
+    joint3d_loss = (joint_loss_weight**2) * joint3d_loss_part.sum(dim=-1)
+    return joint3d_loss.sum()

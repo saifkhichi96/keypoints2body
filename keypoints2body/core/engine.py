@@ -5,7 +5,13 @@ from typing import Optional
 import h5py
 import torch
 
-from ..models.smpl_data import BodyModelFitResult, SMPLData
+from ..models.smpl_data import (
+    BodyModelFitResult,
+    BodyModelParams,
+    FLAMEData,
+    MANOData,
+    SMPLData,
+)
 from .config import FrameOptimizeConfig, SequenceOptimizeConfig
 from .estimators.factory import create_estimator
 from .fitters.world_space import guess_init_transl_from_root
@@ -15,7 +21,13 @@ from .shape import optimize_shape_multi_frame
 class OptimizeEngine:
     """Coordinator that routes frame fitting to the configured estimator."""
 
-    def __init__(self, model, frame_config: FrameOptimizeConfig, device: torch.device):
+    def __init__(
+        self,
+        model,
+        frame_config: FrameOptimizeConfig,
+        device: torch.device,
+        model_type: str = "smpl",
+    ):
         self.model = model
         self.frame_config = frame_config
         self.device = device
@@ -23,11 +35,12 @@ class OptimizeEngine:
             model=model,
             frame_config=frame_config,
             device=device,
+            model_type=model_type,
         )
 
     def fit_frame(
         self,
-        init_params: SMPLData,
+        init_params: BodyModelParams,
         j3d: torch.Tensor,
         conf_3d: Optional[torch.Tensor],
         seq_ind: int,
@@ -101,6 +114,43 @@ def default_init_params(
     return SMPLData(
         betas=betas, global_orient=pose[:, :3], body_pose=pose[:, 3:], transl=transl
     )
+
+
+def default_init_params_for_model(
+    model_type: str,
+    model,
+    joints_frame: torch.Tensor,
+    device: torch.device,
+    coordinate_mode: str,
+) -> BodyModelParams:
+    """Create model-aware zero initialization for non-SMPL-family fitters."""
+    batch = joints_frame.shape[0]
+    num_betas = int(getattr(model, "num_betas", 10))
+    transl = joints_frame[:, 0, :].clone().detach() if coordinate_mode == "world" else None
+
+    if model_type == "mano":
+        num_hand_joints = int(getattr(model, "NUM_HAND_JOINTS", 15))
+        return MANOData(
+            betas=torch.zeros((batch, num_betas), device=device),
+            global_orient=torch.zeros((batch, 3), device=device),
+            body_pose=torch.zeros((batch, 0), device=device),
+            transl=transl,
+            hand_pose=torch.zeros((batch, num_hand_joints * 3), device=device),
+        )
+    if model_type == "flame":
+        num_expr = int(getattr(model, "num_expression_coeffs", 10))
+        return FLAMEData(
+            betas=torch.zeros((batch, num_betas), device=device),
+            global_orient=torch.zeros((batch, 3), device=device),
+            body_pose=torch.zeros((batch, 0), device=device),
+            transl=transl,
+            expression=torch.zeros((batch, num_expr), device=device),
+            jaw_pose=torch.zeros((batch, 3), device=device),
+            neck_pose=torch.zeros((batch, 3), device=device),
+            leye_pose=torch.zeros((batch, 3), device=device),
+            reye_pose=torch.zeros((batch, 3), device=device),
+        )
+    raise ValueError(f"default_init_params_for_model is unsupported for {model_type}")
 
 
 def optimize_shape_pass(

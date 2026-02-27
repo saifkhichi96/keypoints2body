@@ -36,7 +36,7 @@ class FrameOptimizeConfig:
     freeze_betas: bool = False
     shape_prior_weight: float = 5.0
     pose_prior_num_gaussians: int = 8
-    joints_category: Literal["SMPL24", "AMASS"] = "AMASS"
+    joints_category: Literal["SMPL24", "AMASS", "GENERIC"] = "AMASS"
 
 
 @dataclass

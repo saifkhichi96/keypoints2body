@@ -7,15 +7,42 @@ import torch
 from ...models.smpl_data import BodyModelFitResult, BodyModelParams
 from ..config import FrameOptimizeConfig
 from ..fitters.camera_space import CameraSpaceFitter
+from ..fitters.misc_models import FLAMEFitter, MANOFitter
 from ..fitters.world_space import WorldSpaceFitter
 
 
 class OptimizationEstimator:
     """Adapter that exposes existing optimizer fitters via BodyEstimator interface."""
 
-    def __init__(self, model, frame_config: FrameOptimizeConfig, device: torch.device):
+    def __init__(
+        self,
+        model,
+        frame_config: FrameOptimizeConfig,
+        device: torch.device,
+        model_type: str = "smpl",
+    ):
         self.frame_config = frame_config
-        if frame_config.coordinate_mode == "camera":
+        if model_type == "mano":
+            self._fitter = MANOFitter(
+                model=model,
+                coordinate_mode=frame_config.coordinate_mode,
+                step_size=frame_config.step_size,
+                num_iters_first=frame_config.num_iters_first,
+                num_iters_followup=frame_config.num_iters_followup,
+                use_lbfgs=frame_config.use_lbfgs,
+                device=device,
+            )
+        elif model_type == "flame":
+            self._fitter = FLAMEFitter(
+                model=model,
+                coordinate_mode=frame_config.coordinate_mode,
+                step_size=frame_config.step_size,
+                num_iters_first=frame_config.num_iters_first,
+                num_iters_followup=frame_config.num_iters_followup,
+                use_lbfgs=frame_config.use_lbfgs,
+                device=device,
+            )
+        elif frame_config.coordinate_mode == "camera":
             self._fitter = CameraSpaceFitter(
                 smpl_model=model,
                 step_size=frame_config.step_size,

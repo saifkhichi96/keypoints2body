@@ -23,16 +23,15 @@ Recognized model backends:
 
 Current optimization estimator support:
 
-- Fully supported in optimization APIs: ``smpl``, ``smplh``, ``smplx``
-- Registered for model loading and type system: ``mano``, ``flame``
+- Fully supported in optimization APIs: ``smpl``, ``smplh``, ``smplx``, ``mano``, ``flame``
 
 Returned ``result.params`` type depends on model:
 
 - ``SMPLData`` for SMPL
 - ``SMPLHData`` for SMPL-H
 - ``SMPLXData`` for SMPL-X
-- ``MANOData`` for MANO (when estimator integration is enabled)
-- ``FLAMEData`` for FLAME (when estimator integration is enabled)
+- ``MANOData`` for MANO
+- ``FLAMEData`` for FLAME
 
 Frame Optimization
 ------------------
@@ -77,13 +76,15 @@ Supported sequence inputs:
 Joint layout adapters
 ---------------------
 
-The library supports these layouts via adapter registry:
+For SMPL-family body fitting, the library supports these layouts via adapter registry:
 
 - ``AMASS`` (22 joints)
 - ``SMPL24`` (24 joints)
 - ``Manny25`` (25 joints)
 - ``Halpe26`` (26 joints)
 - ``SpineTrack37`` (37 joints)
+
+For MANO/FLAME, provide joints in the model-native order and keep ``joint_layout=None``.
 
 Confidence handling
 -------------------

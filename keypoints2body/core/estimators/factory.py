@@ -16,7 +16,9 @@ class LearnedEstimator:
         )
 
 
-def create_estimator(model, frame_config: FrameOptimizeConfig, device: torch.device):
+def create_estimator(
+    model, frame_config: FrameOptimizeConfig, device: torch.device, model_type: str
+):
     """Instantiate an estimator implementation from frame config.
 
     Args:
@@ -29,7 +31,10 @@ def create_estimator(model, frame_config: FrameOptimizeConfig, device: torch.dev
     """
     if frame_config.estimator_type == "optimization":
         return OptimizationEstimator(
-            model=model, frame_config=frame_config, device=device
+            model=model,
+            frame_config=frame_config,
+            device=device,
+            model_type=model_type,
         )
     if frame_config.estimator_type == "learned":
         return LearnedEstimator(model=model, frame_config=frame_config, device=device)

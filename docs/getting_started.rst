@@ -28,8 +28,7 @@ The public APIs and model factory accept ``body_model`` with one of:
 
 Current estimator coverage:
 
-- Optimization estimator (frame/sequence APIs): ``smpl``, ``smplh``, ``smplx``
-- Registered for model loading and typed params: ``mano``, ``flame``
+- Optimization estimator (frame/sequence APIs): ``smpl``, ``smplh``, ``smplx``, ``mano``, ``flame``
 
 Required model assets
 ---------------------

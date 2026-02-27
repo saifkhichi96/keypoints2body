@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from keypoints2body.models.smpl_data import SMPLData
+from keypoints2body.models.smpl_data import FLAMEData, MANOData, SMPLData
 
 
 def test_pose_concat_and_validate():
@@ -33,3 +33,25 @@ def test_numpy_params_supported():
         body_pose=np.zeros((1, 69), dtype=np.float32),
     )
     assert params.pose.shape == (1, 72)
+
+
+def test_mano_and_flame_data_containers():
+    mano = MANOData(
+        betas=torch.zeros(1, 10),
+        global_orient=torch.zeros(1, 3),
+        body_pose=torch.zeros(1, 0),
+        hand_pose=torch.zeros(1, 45),
+        transl=torch.zeros(1, 3),
+    )
+    flame = FLAMEData(
+        betas=torch.zeros(1, 10),
+        global_orient=torch.zeros(1, 3),
+        body_pose=torch.zeros(1, 0),
+        expression=torch.zeros(1, 10),
+        jaw_pose=torch.zeros(1, 3),
+        transl=torch.zeros(1, 3),
+    )
+    mano.validate()
+    flame.validate()
+    assert tuple(mano.pose.shape) == (1, 3)
+    assert tuple(flame.pose.shape) == (1, 3)

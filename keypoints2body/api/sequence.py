@@ -13,15 +13,22 @@ from ..core.config import (
 from ..core.engine import (
     OptimizeEngine,
     default_init_params,
+    default_init_params_for_model,
     load_mean_pose_shape,
     optimize_shape_pass,
 )
 from ..core.joints.adapters import adapt_layout_and_conf, normalize_joints_sequence
-from ..models.smpl_data import BodyModelFitResult, BodyModelParams, SMPLData
+from ..models.smpl_data import (
+    BodyModelFitResult,
+    BodyModelParams,
+    FLAMEData,
+    MANOData,
+    SMPLData,
+)
 from .model_factory import load_body_model
 
 DEFAULT_MEAN_FILE = "./data/models/neutral_smpl_mean_params.h5"
-OPTIMIZATION_BODY_MODELS = {"smpl", "smplh", "smplx"}
+OPTIMIZATION_BODY_MODELS = {"smpl", "smplh", "smplx", "mano", "flame"}
 
 
 def optimize_params_sequence(
@@ -40,8 +47,7 @@ def optimize_params_sequence(
         joints_seq: Sequence keypoints with shape ``(T,K,3)`` or ``(T,K,4)``.
         init_params: Optional initial parameters for frame 0.
         body_model: Body model backend. Recognized values are ``smpl``, ``smplh``,
-            ``smplx``, ``mano``, and ``flame``. The current optimization estimator
-            supports ``smpl``/``smplh``/``smplx``.
+            ``smplx``, ``mano``, and ``flame``.
         joint_layout: Optional explicit layout label for adapter selection.
         model: Optional preloaded body model instance.
         config: Optional sequence config or dict equivalent.
@@ -74,22 +80,26 @@ def optimize_params_sequence(
             "Current APIs support only joints3d."
         )
     if body_model not in OPTIMIZATION_BODY_MODELS:
-        raise NotImplementedError(
-            f"body_model='{body_model}' is registered but not yet supported by the "
-            "optimization estimator. Add a model-specific estimator under "
-            "keypoints2body.core.estimators."
-        )
-
+        raise ValueError(f"Unsupported body_model: {body_model}")
     xyz, conf = normalize_joints_sequence(joints_seq)
-    xyz_np, conf_np, out_layout = adapt_layout_and_conf(
-        xyz.cpu().numpy(), conf.cpu().numpy(), joint_layout
-    )
-    xyz = torch.as_tensor(xyz_np, dtype=torch.float32, device=device)
-    conf = torch.as_tensor(conf_np, dtype=torch.float32, device=device)
-
-    if out_layout not in ("SMPL24", "AMASS"):
-        raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
-    seq_cfg.frame.joints_category = out_layout
+    if body_model in {"smpl", "smplh", "smplx"}:
+        xyz_np, conf_np, out_layout = adapt_layout_and_conf(
+            xyz.cpu().numpy(), conf.cpu().numpy(), joint_layout
+        )
+        xyz = torch.as_tensor(xyz_np, dtype=torch.float32, device=device)
+        conf = torch.as_tensor(conf_np, dtype=torch.float32, device=device)
+        if out_layout not in ("SMPL24", "AMASS"):
+            raise ValueError(f"Unsupported output layout after adaptation: {out_layout}")
+        seq_cfg.frame.joints_category = out_layout
+    else:
+        if joint_layout is not None:
+            raise ValueError(
+                "joint_layout adapters are currently defined for SMPL-family body "
+                "layouts only. Use raw MANO/FLAME joint order with joint_layout=None."
+            )
+        xyz = xyz.to(device)
+        conf = conf.to(device)
+        seq_cfg.frame.joints_category = "GENERIC"
 
     if seq_cfg.limit_frames is not None and seq_cfg.limit_frames > 0:
         xyz = xyz[: seq_cfg.limit_frames]
@@ -105,34 +115,59 @@ def optimize_params_sequence(
         body_cfg = BodyModelConfig(model_type=body_model)
         model = load_body_model(body_cfg, device)
 
-    init_mean_pose, init_mean_shape = load_mean_pose_shape(DEFAULT_MEAN_FILE, device)
-    betas_opt = optimize_shape_pass(
-        model=model,
-        seq_config=seq_cfg,
-        init_mean_shape=init_mean_shape,
-        init_mean_pose=init_mean_pose,
-        data_tensor=xyz,
-        confidence_input=conf[0],
-        device=device,
-    )
+    if body_model in {"smpl", "smplh", "smplx"}:
+        init_mean_pose, init_mean_shape = load_mean_pose_shape(DEFAULT_MEAN_FILE, device)
+        betas_opt = optimize_shape_pass(
+            model=model,
+            seq_config=seq_cfg,
+            init_mean_shape=init_mean_shape,
+            init_mean_pose=init_mean_pose,
+            data_tensor=xyz,
+            confidence_input=conf[0],
+            device=device,
+        )
+    else:
+        init_mean_pose = None
+        init_mean_shape = None
+        betas_opt = None
 
-    engine = OptimizeEngine(model=model, frame_config=seq_cfg.frame, device=device)
+    engine = OptimizeEngine(
+        model=model,
+        frame_config=seq_cfg.frame,
+        device=device,
+        model_type=body_model,
+    )
     results: list[BodyModelFitResult] = []
 
     if init_params is None:
-        prev = default_init_params(
-            init_mean_pose,
-            betas_opt,
-            xyz[0:1],
-            model,
-            joints_category=seq_cfg.frame.joints_category,
-            coordinate_mode=seq_cfg.frame.coordinate_mode,
-        )
+        if body_model in {"smpl", "smplh", "smplx"}:
+            prev = default_init_params(
+                init_mean_pose,
+                betas_opt,
+                xyz[0:1],
+                model,
+                joints_category=seq_cfg.frame.joints_category,
+                coordinate_mode=seq_cfg.frame.coordinate_mode,
+            )
+        else:
+            prev = default_init_params_for_model(
+                model_type=body_model,
+                model=model,
+                joints_frame=xyz[0:1],
+                device=device,
+                coordinate_mode=seq_cfg.frame.coordinate_mode,
+            )
     else:
-        if not isinstance(init_params, SMPLData):
+        expected_type = {
+            "smpl": SMPLData,
+            "smplh": SMPLData,
+            "smplx": SMPLData,
+            "mano": MANOData,
+            "flame": FLAMEData,
+        }[body_model]
+        if not isinstance(init_params, expected_type):
             raise ValueError(
-                "init_params must be SMPLData-compatible for optimization-based "
-                "sequence fitting in this release."
+                f"init_params must be {expected_type.__name__} for body_model={body_model}."
             )
         prev = init_params.to(device)
 
@@ -141,30 +176,33 @@ def optimize_params_sequence(
         frame_conf = conf[idx]
 
         if seq_cfg.frame.coordinate_mode == "world" and prev.transl is None:
-            pose = (
-                prev.pose
-                if isinstance(prev.pose, torch.Tensor)
-                else torch.as_tensor(prev.pose, dtype=torch.float32, device=device)
-            )
-            betas = (
-                prev.betas
-                if isinstance(prev.betas, torch.Tensor)
-                else torch.as_tensor(prev.betas, dtype=torch.float32, device=device)
-            )
-            prev = SMPLData(
-                betas=betas,
-                global_orient=pose[:, :3],
-                body_pose=pose[:, 3:],
-                transl=default_init_params(
-                    pose,
-                    betas,
-                    frame,
-                    model,
-                    seq_cfg.frame.joints_category,
-                    seq_cfg.frame.coordinate_mode,
-                ).transl,
-                metadata=dict(getattr(prev, "metadata", {})),
-            )
+            if body_model in {"mano", "flame"}:
+                prev.transl = frame[:, 0, :].detach()
+            else:
+                pose = (
+                    prev.pose
+                    if isinstance(prev.pose, torch.Tensor)
+                    else torch.as_tensor(prev.pose, dtype=torch.float32, device=device)
+                )
+                betas = (
+                    prev.betas
+                    if isinstance(prev.betas, torch.Tensor)
+                    else torch.as_tensor(prev.betas, dtype=torch.float32, device=device)
+                )
+                prev = SMPLData(
+                    betas=betas,
+                    global_orient=pose[:, :3],
+                    body_pose=pose[:, 3:],
+                    transl=default_init_params(
+                        pose,
+                        betas,
+                        frame,
+                        model,
+                        seq_cfg.frame.joints_category,
+                        seq_cfg.frame.coordinate_mode,
+                    ).transl,
+                    metadata=dict(getattr(prev, "metadata", {})),
+                )
 
         res = engine.fit_frame(
             init_params=prev, j3d=frame, conf_3d=frame_conf, seq_ind=idx

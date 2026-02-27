@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">keypoints2body</title>
+  <desc id="desc">SMPL optimization library header</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1200" height="320" rx="24" fill="url(#bg)"/>
+  <g opacity="0.25" stroke="#94a3b8" fill="none">
+    <circle cx="1020" cy="70" r="180"/>
+    <circle cx="1080" cy="90" r="130"/>
+    <circle cx="160" cy="280" r="120"/>
+  </g>
+  <g transform="translate(70,70)">
+    <text x="0" y="42" fill="#e2e8f0" font-size="52" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-weight="700">
+      keypoints2body
+    </text>
+    <rect x="0" y="62" width="340" height="6" rx="3" fill="url(#accent)"/>
+    <text x="0" y="108" fill="#cbd5e1" font-size="24" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+      SMPL/SMPLH/SMPLX fitting for frames and motion sequences
+    </text>
+    <text x="0" y="144" fill="#94a3b8" font-size="18" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+      Python API + CLI, typed data models, configurable optimization engine
+    </text>
+  </g>
+</svg>

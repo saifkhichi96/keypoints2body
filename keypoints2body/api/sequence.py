@@ -87,6 +87,7 @@ def optimize_params_sequence(
             f"input_type='{seq_cfg.frame.input_type}' is not implemented in this release. "
             "Current APIs support only joints3d."
         )
+    is_ikgat = seq_cfg.frame.estimator_type == "ikgat"
     if body_model not in OPTIMIZATION_BODY_MODELS:
         raise ValueError(f"Unsupported body_model: {body_model}")
     xyz, conf, model_indices, in_layout = normalize_sequence_observations(
@@ -124,11 +125,15 @@ def optimize_params_sequence(
         conf[:, 10] = 1.5
         conf[:, 11] = 1.5
 
-    if model is None:
+    if model is None and not is_ikgat:
         body_cfg = BodyModelConfig(model_type=body_model)
         model = load_body_model(body_cfg, device)
 
-    if body_model in {"smpl", "smplh", "smplx"}:
+    if is_ikgat:
+        init_mean_pose = None
+        init_mean_shape = None
+        betas_opt = None
+    elif body_model in {"smpl", "smplh", "smplx"}:
         init_mean_pose, init_mean_shape = load_mean_pose_shape(DEFAULT_MEAN_FILE, device)
         if seq_cfg.frame.joints_category != "GENERIC":
             betas_opt = optimize_shape_pass(
@@ -156,7 +161,14 @@ def optimize_params_sequence(
     results: list[BodyModelFitResult] = []
 
     if init_params is None:
-        if body_model in {"smpl", "smplh", "smplx"}:
+        if is_ikgat:
+            prev = SMPLData(
+                betas=torch.zeros((1, 10), dtype=torch.float32, device=device),
+                global_orient=torch.zeros((1, 3), dtype=torch.float32, device=device),
+                body_pose=torch.zeros((1, 69), dtype=torch.float32, device=device),
+                transl=xyz[0:1, 0, :].detach() if seq_cfg.frame.coordinate_mode == "world" else None,
+            )
+        elif body_model in {"smpl", "smplh", "smplx"}:
             base_init = default_init_params(
                 init_mean_pose,
                 betas_opt,

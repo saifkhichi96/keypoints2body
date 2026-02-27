@@ -73,6 +73,7 @@ def optimize_params_frame(
             f"input_type='{frame_cfg.input_type}' is not implemented in this release. "
             "Current APIs support only joints3d."
         )
+    is_ikgat = frame_cfg.estimator_type == "ikgat"
     if body_model not in OPTIMIZATION_BODY_MODELS:
         raise ValueError(f"Unsupported body_model: {body_model}")
     j3d, conf_3d, model_indices, in_layout = normalize_frame_observations(
@@ -100,7 +101,7 @@ def optimize_params_frame(
         if model_indices is not None:
             model_indices = model_indices.to(device=device, dtype=torch.long)
 
-    if model is None:
+    if model is None and not is_ikgat:
         body_cfg = BodyModelConfig(model_type=body_model)
         model = load_body_model(body_cfg, device)
 
@@ -109,7 +110,14 @@ def optimize_params_frame(
     )
 
     if prev_params is None:
-        if body_model in {"smpl", "smplh", "smplx"}:
+        if is_ikgat:
+            init_params = SMPLData(
+                betas=torch.zeros((1, 10), dtype=torch.float32, device=device),
+                global_orient=torch.zeros((1, 3), dtype=torch.float32, device=device),
+                body_pose=torch.zeros((1, 69), dtype=torch.float32, device=device),
+                transl=j3d[:, 0, :].detach() if frame_cfg.coordinate_mode == "world" else None,
+            )
+        elif body_model in {"smpl", "smplh", "smplx"}:
             init_mean_pose, init_mean_shape = load_mean_pose_shape(
                 DEFAULT_MEAN_FILE, device
             )

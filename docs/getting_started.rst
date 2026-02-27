@@ -87,6 +87,7 @@ Optional extras:
 
    pip install -e .[dev]
    pip install -e .[docs]
+   pip install -e .[learned]
 
 Minimal Example
 ---------------

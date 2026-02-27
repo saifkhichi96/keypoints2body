@@ -214,3 +214,20 @@ Use ``FrameOptimizeConfig`` and ``SequenceOptimizeConfig`` for explicit control.
        body_model="smpl",
        joint_layout="AMASS",
    )
+
+IKGAT estimator example
+-----------------------
+
+.. code-block:: python
+
+   from keypoints2body.core.config import FrameOptimizeConfig
+   from keypoints2body import optimize_params_frame
+
+   cfg = FrameOptimizeConfig(
+       estimator_type="ikgat",
+       ikgat_model_format="smplx",
+       ikgat_model_type="pos_to_rot6",
+       ikgat_parent_ids=[-1, 0, 0, 0, 1, 2, 3],
+   )
+   result = optimize_params_frame(joints, body_model="smplx", config=cfg)
+   quats = result.params.metadata["ikgat_quaternions"]

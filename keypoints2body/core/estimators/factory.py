@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 
 from ..config import FrameOptimizeConfig
+from .ikgat import IKGATEstimator
 from .optimization import OptimizationEstimator
 
 
@@ -38,4 +39,6 @@ def create_estimator(
         )
     if frame_config.estimator_type == "learned":
         return LearnedEstimator(model=model, frame_config=frame_config, device=device)
+    if frame_config.estimator_type == "ikgat":
+        return IKGATEstimator(frame_config=frame_config, device=device)
     raise ValueError(f"Unknown estimator_type: {frame_config.estimator_type}")

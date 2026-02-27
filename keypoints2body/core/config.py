@@ -23,7 +23,7 @@ class BodyModelConfig:
 class FrameOptimizeConfig:
     """Configuration for single-frame estimation/optimization."""
 
-    estimator_type: Literal["optimization", "learned"] = "optimization"
+    estimator_type: Literal["optimization", "learned", "ikgat"] = "optimization"
     input_type: Literal["joints3d", "joints2d", "multiview_joints2d"] = "joints3d"
     coordinate_mode: Literal["camera", "world"] = "world"
     use_lbfgs: bool = True
@@ -37,6 +37,13 @@ class FrameOptimizeConfig:
     shape_prior_weight: float = 5.0
     pose_prior_num_gaussians: int = 8
     joints_category: Literal["SMPL24", "AMASS", "GENERIC"] = "AMASS"
+    ikgat_model_dir: Path = Path("./data/estimators")
+    ikgat_model_format: str = "manny"
+    ikgat_model_type: str = "pos_to_rot6"
+    ikgat_parent_ids: Optional[list[int]] = None
+    ikgat_hidden_dim: int = 128
+    ikgat_num_layers: int = 3
+    ikgat_num_heads: int = 4
 
 
 @dataclass

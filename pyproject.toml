@@ -29,6 +29,7 @@ dev = ["ruff", "pytest", "mypy"]
 docs = ["sphinx>=7", "furo>=2024.8.6", "sphinxcontrib-mermaid>=0.9"]
 eval = []
 render = []
+learned = ["torch-geometric", "scipy"]
 
 [project.scripts]
 keypoints2body-fit-frame = "keypoints2body.cli.fit_frame:main"

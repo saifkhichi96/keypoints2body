@@ -30,82 +30,98 @@ Two input styles are supported:
 For full SMPLH/SMPLX fitting, use the block-wise dict style so hand/face terms are
 directly constrained in the optimization loss.
 
-Common parameter fields
------------------------
+Parameter Shapes
+----------------
 
-All model dataclasses inherit from ``BodyModelParams`` and include:
+Shape notation:
 
-- ``betas``: shape coefficients.
-- ``global_orient``: global/root orientation (axis-angle).
-- ``body_pose``: body pose block.
-- ``transl``: optional translation.
-- ``metadata``: optional dictionary for trace/debug metadata.
+- ``B``: batch size (typically 1 in frame fitting).
+- ``Nb``: number of shape coefficients (``model.num_betas``, often 10).
+- ``Ne``: number of expression coefficients (``model.num_expression_coeffs``, often 10).
 
-SMPL family
------------
+Common fields (``BodyModelParams``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SMPLData
-~~~~~~~~
+.. list-table::
+   :header-rows: 1
+   :widths: 22 20 58
 
-Class: ``SMPLData``
+   * - Field
+     - Shape
+     - Notes
+   * - ``betas``
+     - ``(B, Nb)``
+     - Shape coefficients.
+   * - ``global_orient``
+     - ``(B, 3)``
+     - Root orientation in axis-angle.
+   * - ``body_pose``
+     - ``(B, D_body)``
+     - Model-dependent body block. For MANO/FLAME this is currently ``(B, 0)`` in this codebase.
+   * - ``transl``
+     - ``(B, 3)`` or ``None``
+     - Translation (world/camera depending on coordinate mode).
+   * - ``metadata``
+     - dict
+     - Optional trace/debug metadata.
 
-- Uses common fields only:
-  - ``betas``
-  - ``global_orient``
-  - ``body_pose``
-  - ``transl`` (optional)
+Model-specific fields
+~~~~~~~~~~~~~~~~~~~~~
 
-SMPLHData
-~~~~~~~~~
+.. list-table::
+   :header-rows: 1
+   :widths: 14 20 20 46
 
-Class: ``SMPLHData`` (extends ``SMPLData``)
+   * - Model
+     - Dataclass
+     - Extra fields
+     - Extra field shapes
+   * - ``smpl``
+     - ``SMPLData``
+     - None
+     - N/A
+   * - ``smplh``
+     - ``SMPLHData``
+     - ``left_hand_pose``, ``right_hand_pose``
+     - Each ``(B, 45)`` (15 joints * 3 axis-angle)
+   * - ``smplx``
+     - ``SMPLXData``
+     - ``left_hand_pose``, ``right_hand_pose``, ``expression``, ``jaw_pose``, ``leye_pose``, ``reye_pose``
+     - Hand poses: ``(B, 45)`` each; ``expression``: ``(B, Ne)``; jaw/eyes: ``(B, 3)`` each
+   * - ``mano``
+     - ``MANOData``
+     - ``hand_pose``
+     - ``(B, 45)`` (15 joints * 3 axis-angle)
+   * - ``flame``
+     - ``FLAMEData``
+     - ``expression``, ``jaw_pose``, ``neck_pose``, ``leye_pose``, ``reye_pose``
+     - ``expression``: ``(B, Ne)``; jaw/neck/eyes: ``(B, 3)`` each
 
-- Adds:
-  - ``left_hand_pose``
-  - ``right_hand_pose``
+Fitting input expectations (important)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SMPLXData
-~~~~~~~~~
+.. list-table::
+   :header-rows: 1
+   :widths: 14 28 58
 
-Class: ``SMPLXData`` (extends ``SMPLHData``)
-
-- Adds:
-  - ``expression``
-  - ``jaw_pose``
-  - ``leye_pose``
-  - ``reye_pose``
-
-MANO
-----
-
-Class: ``MANOData``
-
-- Uses common base fields.
-- Adds:
-  - ``hand_pose``
-
-Notes:
-
-- MANO fitting expects hand keypoints in model-native order.
-- Keep ``joint_layout=None`` when calling API functions with ``body_model="mano"``.
-
-FLAME
------
-
-Class: ``FLAMEData``
-
-- Uses common base fields.
-- Adds:
-  - ``expression``
-  - ``jaw_pose``
-  - ``neck_pose``
-  - ``leye_pose``
-  - ``reye_pose``
-
-Notes:
-
-- FLAME fitting expects face keypoints/landmarks in model-native order.
-- Keep ``joint_layout=None`` when calling API functions with ``body_model="flame"``.
+   * - Model
+     - Preferred observation input
+     - Notes
+   * - ``smpl``
+     - Flat array/tensor ``(K,3|4)`` or ``(T,K,3|4)``
+     - ``joint_layout`` adapters (AMASS/SMPL24/etc.) are supported.
+   * - ``smplh``
+     - Dict blocks: ``body`` + hands
+     - For full hand-constrained fitting, provide ``left_hand`` and ``right_hand`` blocks.
+   * - ``smplx``
+     - Dict blocks: ``body`` + hands + face
+     - For full-body/hand/face constraints, use block-wise dict and ``joint_layout=None``.
+   * - ``mano``
+     - Flat hand keypoints or dict-style hand blocks
+     - Keep model-native order and ``joint_layout=None``.
+   * - ``flame``
+     - Flat face keypoints or dict-style face blocks
+     - Keep model-native order and ``joint_layout=None``.
 
 Returned fit result
 -------------------

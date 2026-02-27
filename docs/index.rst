@@ -9,6 +9,11 @@ keypoints2body Documentation
 It provides optimization pipelines for SMPL-family models and extensible
 model-loading architecture for additional families (for example MANO and FLAME).
 
+Version stability note:
+
+- ``v0.1.x`` is pre-stable and may introduce breaking API changes, including patch releases.
+- Strict backward compatibility starts at ``v0.2.0``.
+
 .. toctree::
    :maxdepth: 2
    :caption: User Guide

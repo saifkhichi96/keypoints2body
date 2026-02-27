@@ -11,6 +11,11 @@
 It supports SMPL-family optimization APIs and model loading hooks for additional
 families such as MANO and FLAME.
 
+## Versioning policy
+
+- `v0.1.x` is intentionally unstable; backward compatibility is not guaranteed, including patch releases.
+- From `v0.2.0` onward, backward compatibility will be strictly maintained for patch/minor releases within the major version.
+
 ## Install
 
 ```bash

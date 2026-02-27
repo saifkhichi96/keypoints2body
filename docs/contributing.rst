@@ -27,6 +27,12 @@ Current architecture contracts
 - ``keypoints2body.io`` owns file I/O and exports.
 - ``keypoints2body.cli`` should call ``api`` only.
 
+Compatibility policy
+--------------------
+
+- During ``v0.1.x``, backward compatibility is not guaranteed, including patch versions.
+- From ``v0.2.0`` onward, patch/minor releases must preserve backward compatibility.
+
 Extension points
 ----------------
 
@@ -94,7 +100,7 @@ v0.2
 ~~~~
 
 - Add backend registry to decouple model-family specifics.
-- Add first non-SMPL-family backend integration.
+- Extend estimator coverage to MANO and FLAME optimization paths.
 - Add backend capability matrix in docs.
 
 v0.3
